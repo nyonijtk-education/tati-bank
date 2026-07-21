@@ -9,7 +9,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const PORT = parseInt(process.env.PORT, 10) || 3000;
+// Default to 3003 locally, or use Railway's dynamic PORT environment variable in production
+const PORT = parseInt(process.env.PORT, 10) || 3003;
 
 // Middleware
 app.use(express.json());
@@ -525,12 +526,13 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 function listen(targetPort) {
-    server.listen(targetPort, () => {
+    // Explicitly binding to '0.0.0.0' allows Railway/proxies to route external web requests properly
+    server.listen(targetPort, '0.0.0.0', () => {
         console.log(`
 =============================================================
 🌳 TATI BANK SERVER ENGINE ONLINE
 =============================================================
-* Core Server Port : http://localhost:${targetPort}
+* Core Server Port : http://0.0.0.0:${targetPort}
 * Dynamic Price    : Active (Appreciation Green Insights Enabled)
 * Maintenance Mode : Automatic Shutdown at $85.00 USD Floor
 =============================================================
