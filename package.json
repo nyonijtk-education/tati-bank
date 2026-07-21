@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@solana/spl-token": "^0.1.8",
+    "@solana/web3.js": "^1.98.4",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "lucide-react": "^1.17.0",
+    "socket.io": "^4.8.3"
+  }
+}
