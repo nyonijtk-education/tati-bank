@@ -169,7 +169,7 @@ function seedInitialMemoryCache() {
         growerCode: "GW-1001",
         pin: "1234",
         farmerName: "Tatenda Nyoni",
-        farmerGroup: "Mkwasine Outgrowers Co-operative",
+        farmerGroup: "The Huletts Sunsweet® Reserve",
         location: "Hippo Valley Estate",
         balanceTati: 1250.00,
         receiptLedger: [
@@ -177,7 +177,7 @@ function seedInitialMemoryCache() {
                 gatepassId: "GP-88201",
                 growerCode: "GW-1001",
                 farmerName: "Tatenda Nyoni",
-                farmerGroup: "Mkwasine Outgrowers Co-operative",
+                farmerGroup: "The Huletts Sunsweet® Reserve",
                 bundleWeightTons: 6.2,
                 usdValuation: "$527.00 USD",
                 tatiMinted: "+6.20 TATI",
@@ -191,19 +191,19 @@ function seedInitialMemoryCache() {
         growerCode: "GW-1002",
         pin: "5678",
         farmerName: "Runyararo Tongogara",
-        farmerGroup: "Hippo Valley Farmers Group",
-        location: "Hippo Valley Section 9",
+        farmerGroup: "The Huletts Sunsweet® Reserve",
+        location: "Mwenezi District",
         balanceTati: 840.50,
         receiptLedger: [
             {
                 gatepassId: "GP-88104",
                 growerCode: "GW-1002",
                 farmerName: "Runyararo Tongogara",
-                farmerGroup: "Hippo Valley Farmers Group",
+                farmerGroup: "The Huletts Sunsweet® Reserve",
                 bundleWeightTons: 5.5,
                 usdValuation: "$467.50 USD",
                 tatiMinted: "+5.50 TATI",
-                location: "Hippo Valley Gate 2",
+                location: "Mwenezi District Gate",
                 timestamp: new Date(Date.now() - 7200000).toLocaleTimeString(),
                 type: "GATEPASS_CREDIT"
             }
@@ -220,7 +220,8 @@ const ORIGINAL_BASELINE_FLOOR = 85.00;
 
 let sovereignBacking = {
     symbol: "🌳 Baobab",
-    bankName: "TATI Bank Live Market and Reserve Desk",
+    bankName: "TATI BANK",
+    subtitle: "TONGAAT HULETT ZIMBABWE",
     sugarcaneReservesTons: 176470.58,
     ratePerTonneUsd: ORIGINAL_BASELINE_FLOOR,
     necessityReservesUsd: 15000000.00,
@@ -268,7 +269,7 @@ async function getOrCreateFarmer(growerCode) {
             growerCode: code,
             pin: "0000",
             farmerName: `Outgrower ${code}`,
-            farmerGroup: "Lowveld Sugarcane Syndicate",
+            farmerGroup: "The Huletts Sunsweet® Reserve",
             location: "Lowveld Mill Area",
             balanceTati: 0.00,
             receiptLedger: []
@@ -384,7 +385,9 @@ io.on('connection', (socket) => {
                 farmerName: farmer.farmerName,
                 farmerGroup: farmer.farmerGroup,
                 location: farmer.location,
-                balanceTati: farmer.balanceTati
+                balanceTati: farmer.balanceTati,
+                bankName: sovereignBacking.bankName,
+                subtitle: sovereignBacking.subtitle
             });
 
             socket.emit('receipt_history', farmer.receiptLedger);
@@ -423,7 +426,7 @@ io.on('connection', (socket) => {
             growerCode,
             pin: pin.toString().trim(),
             farmerName: farmerName.trim(),
-            farmerGroup: farmerGroup ? farmerGroup.trim() : "Independent Outgrowers Co-op",
+            farmerGroup: farmerGroup ? farmerGroup.trim() : "The Huletts Sunsweet® Reserve",
             location: location ? location.trim() : "Lowveld Region",
             balanceTati: 0.00,
             receiptLedger: []
@@ -438,8 +441,17 @@ io.on('connection', (socket) => {
             farmerName: newFarmer.farmerName,
             farmerGroup: newFarmer.farmerGroup,
             location: newFarmer.location,
-            balanceTati: newFarmer.balanceTati
+            balanceTati: newFarmer.balanceTati,
+            bankName: sovereignBacking.bankName,
+            subtitle: sovereignBacking.subtitle
         });
+
+        socket.emit('receipt_history', newFarmer.receiptLedger);
+        socket.emit('price_history', priceHistory);
+        socket.emit('fx_update', fxRates);
+        socket.emit('backing_update', sovereignBacking);
+
+        console.log(`👤 [NEW FARMER REGISTERED] ${newFarmer.farmerName} (${newFarmer.growerCode})`);
     });
 
     socket.on('send_message', (data) => {
@@ -453,13 +465,12 @@ io.on('connection', (socket) => {
 });
 
 // ============================================================================
-// 5. REST & TELECOM API ENDPOINTS (FULL USSD BRANCHING + DB PERSISTENCE)
+// 5. REST & TELECOM API ENDPOINTS
 // ============================================================================
 
 app.post('/api/auth/register', async (req, res) => {
     const { farmerName, pin, farmerGroup, location, preferredCode } = req.body;
 
-    // Validation
     if (!farmerName || !pin || pin.toString().length !== 4) {
         return res.status(400).json({
             success: false,
@@ -467,7 +478,6 @@ app.post('/api/auth/register', async (req, res) => {
         });
     }
 
-    // Determine Grower Code (use requested code or auto-generate GW-XXXX)
     let growerCode = preferredCode ? preferredCode.toUpperCase().trim() : '';
 
     if (!growerCode) {
@@ -486,24 +496,20 @@ app.post('/api/auth/register', async (req, res) => {
         });
     }
 
-    // Construct New Farmer Account
     const newFarmer = {
         growerCode: growerCode,
         pin: pin.toString().trim(),
         farmerName: farmerName.trim(),
-        farmerGroup: farmerGroup ? farmerGroup.trim() : "Independent Outgrowers Co-operative",
+        farmerGroup: farmerGroup ? farmerGroup.trim() : "The Huletts Sunsweet® Reserve",
         location: location ? location.trim() : "Lowveld Sugarcane Belt",
         balanceTati: 0.00,
         receiptLedger: []
     };
 
-    // 1. Save to in-memory state for instant fast access
     farmerDatabase[growerCode] = newFarmer;
-
-    // 2. Persist directly to PostgreSQL database
     await saveFarmerDb(newFarmer);
 
-    console.log(`👤 [NEW FARMER REGISTERED] ${newFarmer.farmerName} (${newFarmer.growerCode})`);
+    console.log(`👤 [NEW FARMER REGISTERED REST] ${newFarmer.farmerName} (${newFarmer.growerCode})`);
 
     return res.status(201).json({
         success: true,
@@ -573,7 +579,6 @@ app.post('/api/admin/approve-gatepass', async (req, res) => {
 
     farmer.receiptLedger.unshift(receipt);
 
-    // Persist to PostgreSQL
     await saveFarmerDb(farmer);
     await saveReceiptDb(receipt);
 
@@ -624,7 +629,6 @@ app.post('/api/client/execute-payment', async (req, res) => {
 
     farmer.receiptLedger.unshift(paymentRecord);
 
-    // Persist to PostgreSQL
     await saveFarmerDb(farmer);
     await saveReceiptDb(paymentRecord);
 
@@ -634,7 +638,7 @@ app.post('/api/client/execute-payment', async (req, res) => {
     res.json({ success: true, paymentRecord, newBalance: farmer.balanceTati });
 });
 
-// FULL USSD ROUTER (COMPLETE WITH TRANSFER & RECEIPT FLOWS)
+// USSD ROUTER
 app.post('/api/ussd', async (req, res) => {
     const { phoneNumber, text } = req.body;
     const growerCode = phoneToGrowerMap[phoneNumber] || 'GW-1001';
@@ -645,7 +649,7 @@ app.post('/api/ussd', async (req, res) => {
     const inputs = rawText.split('*').filter(i => i.trim() !== '');
 
     if (isMaintenanceMode) {
-        response = `END 🛠️ TATI Bank Maintenance Mode
+        response = `END 🛠️ TATI BANK Maintenance Mode
 System suspended as spot price touched baseline $85.00 USD floor.
 Service will automatically resume when sugarcane market demand recovers.`;
         res.set('Content-Type', 'text/plain');
@@ -654,7 +658,7 @@ Service will automatically resume when sugarcane market demand recovers.`;
 
     // Main Menu
     if (inputs.length === 0) {
-        response = `CON 🌳 TATI Bank Mobile
+        response = `CON 🌳 TATI BANK Mobile
 Welcome ${farmer.farmerName.split(' ')[0]}
 1. Check Balance
 2. Last Gatepass Receipt
@@ -670,7 +674,7 @@ Welcome ${farmer.farmerName.split(' ')[0]}
             const pinInput = inputs[1];
             if (pinInput === farmer.pin) {
                 const usdVal = (farmer.balanceTati * currentTatiPrice).toFixed(2);
-                response = `END 🏛️ TATI Bank Balance
+                response = `END 🏛️ TATI BANK Balance
 Farmer: ${farmer.farmerName}
 Code: ${farmer.growerCode}
 Balance: ${farmer.balanceTati.toLocaleString()} TATI
@@ -715,7 +719,6 @@ Location: ${lastReceipt.location}`;
             } else if (!farmerDatabase[recipientCode]) {
                 response = `END ❌ Recipient Grower (${recipientCode}) Not Found.`;
             } else {
-                // Execute Transfer
                 const recipient = farmerDatabase[recipientCode];
                 farmer.balanceTati -= transferAmt;
                 recipient.balanceTati += transferAmt;
@@ -735,7 +738,6 @@ Location: ${lastReceipt.location}`;
 
                 farmer.receiptLedger.unshift(senderDebit);
 
-                // Persist both farmers and transaction to PostgreSQL
                 await saveFarmerDb(farmer);
                 await saveFarmerDb(recipient);
                 await saveReceiptDb(senderDebit);
@@ -760,7 +762,7 @@ Current Spot: $${currentTatiPrice.toFixed(2)} USD
     } 
     // Option 0 or default
     else {
-        response = `END Thank you for using TATI Bank.`;
+        response = `END Thank you for using TATI BANK.`;
     }
 
     res.set('Content-Type', 'text/plain');
@@ -771,7 +773,7 @@ Current Spot: $${currentTatiPrice.toFixed(2)} USD
 // 6. SHUTDOWN & AUTOMATIC PORT CLEANUP ENGINE
 // ============================================================================
 const shutdown = () => {
-    console.log('\n🌳 Gracefully shutting down TATI Bank server...');
+    console.log('\n🌳 Gracefully shutting down TATI BANK server...');
     server.close(() => {
         console.log('✅ Port released successfully.');
         process.exit(0);
@@ -782,13 +784,13 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 function listen(targetPort) {
-    // Explicitly binding to '0.0.0.0' allows Railway/proxies to route external web requests properly
     server.listen(targetPort, '0.0.0.0', () => {
         console.log(`
 =============================================================
 🌳 TATI BANK SERVER ENGINE ONLINE
 =============================================================
 * Core Server Port : http://0.0.0.0:${targetPort}
+* Subtitle         : TONGAAT HULETT ZIMBABWE
 * Dynamic Price    : Active (Appreciation Green Insights Enabled)
 * Maintenance Mode : Automatic Shutdown at $85.00 USD Floor
 * PostgreSQL DB    : Enabled & Synchronized
