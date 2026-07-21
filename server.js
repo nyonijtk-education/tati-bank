@@ -4,6 +4,7 @@ const http = require('http');
 const path = require('path');
 const { execSync } = require('child_process');
 const { Server } = require('socket.io');
+const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +24,194 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// ============================================================================
+// POSTGRESQL DATABASE CONNECTOR & HYDRATION LAYER
+// ============================================================================
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
+        ? { rejectUnauthorized: false }
+        : false
+});
+
+// In-Memory Database Cache (Hydrated from PostgreSQL)
+const farmerDatabase = {};
+
+// Helper: Save/Update Farmer in PostgreSQL
+async function saveFarmerDb(farmer) {
+    if (!process.env.DATABASE_URL) return;
+    try {
+        await pool.query(`
+            INSERT INTO farmers (grower_code, pin, farmer_name, farmer_group, location, balance_tati)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (grower_code) DO UPDATE SET
+                pin = EXCLUDED.pin,
+                farmer_name = EXCLUDED.farmer_name,
+                farmer_group = EXCLUDED.farmer_group,
+                location = EXCLUDED.location,
+                balance_tati = EXCLUDED.balance_tati;
+        `, [farmer.growerCode, farmer.pin, farmer.farmerName, farmer.farmerGroup, farmer.location, farmer.balanceTati]);
+    } catch (err) {
+        console.error('❌ DB Farmer Save Error:', err.message);
+    }
+}
+
+// Helper: Save Receipt/Transaction in PostgreSQL
+async function saveReceiptDb(receipt) {
+    if (!process.env.DATABASE_URL) return;
+    try {
+        await pool.query(`
+            INSERT INTO receipts (
+                gatepass_id, grower_code, farmer_name, farmer_group, 
+                bundle_weight_tons, usd_valuation, tati_minted, location, timestamp, type
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (gatepass_id) DO NOTHING;
+        `, [
+            receipt.gatepassId, receipt.growerCode, receipt.farmerName, receipt.farmerGroup,
+            receipt.bundleWeightTons, receipt.usdValuation, receipt.tatiMinted, 
+            receipt.location, receipt.timestamp, receipt.type
+        ]);
+    } catch (err) {
+        console.error('❌ DB Receipt Save Error:', err.message);
+    }
+}
+
+// Auto-initialize tables and load initial data from DB
+async function initDb() {
+    if (!process.env.DATABASE_URL) {
+        console.log('⚠️ No DATABASE_URL found. Running with transient in-memory storage.');
+        seedInitialMemoryCache();
+        return;
+    }
+
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS farmers (
+                grower_code VARCHAR(50) PRIMARY KEY,
+                pin VARCHAR(10) NOT NULL,
+                farmer_name VARCHAR(100) NOT NULL,
+                farmer_group VARCHAR(100),
+                location VARCHAR(100),
+                balance_tati NUMERIC(12, 2) DEFAULT 0.00
+            );
+
+            CREATE TABLE IF NOT EXISTS receipts (
+                id SERIAL PRIMARY KEY,
+                gatepass_id VARCHAR(50) UNIQUE NOT NULL,
+                grower_code VARCHAR(50) REFERENCES farmers(grower_code),
+                farmer_name VARCHAR(100),
+                farmer_group VARCHAR(100),
+                bundle_weight_tons NUMERIC(10, 2),
+                usd_valuation VARCHAR(50),
+                tati_minted VARCHAR(50),
+                location VARCHAR(100),
+                timestamp VARCHAR(100),
+                type VARCHAR(50)
+            );
+        `);
+
+        // Check if database is empty; seed initial records if so
+        const resFarmers = await pool.query('SELECT * FROM farmers;');
+        if (resFarmers.rows.length === 0) {
+            console.log('🌱 Seeding initial records into PostgreSQL...');
+            seedInitialMemoryCache();
+            for (const code of Object.keys(farmerDatabase)) {
+                const f = farmerDatabase[code];
+                await saveFarmerDb(f);
+                for (const r of f.receiptLedger) {
+                    await saveReceiptDb(r);
+                }
+            }
+        } else {
+            // Load existing database into RAM cache
+            console.log('🔄 Hydrating memory cache from PostgreSQL database...');
+            for (const row of resFarmers.rows) {
+                farmerDatabase[row.grower_code] = {
+                    growerCode: row.grower_code,
+                    pin: row.pin,
+                    farmerName: row.farmer_name,
+                    farmerGroup: row.farmer_group,
+                    location: row.location,
+                    balanceTati: parseFloat(row.balance_tati),
+                    receiptLedger: []
+                };
+            }
+
+            const resReceipts = await pool.query('SELECT * FROM receipts ORDER BY id DESC;');
+            for (const row of resReceipts.rows) {
+                if (farmerDatabase[row.grower_code]) {
+                    farmerDatabase[row.grower_code].receiptLedger.push({
+                        gatepassId: row.gatepass_id,
+                        growerCode: row.grower_code,
+                        farmerName: row.farmer_name,
+                        farmerGroup: row.farmer_group,
+                        bundleWeightTons: parseFloat(row.bundle_weight_tons),
+                        usdValuation: row.usd_valuation,
+                        tatiMinted: row.tati_minted,
+                        location: row.location,
+                        timestamp: row.timestamp,
+                        type: row.type
+                    });
+                }
+            }
+        }
+        console.log('✅ PostgreSQL Database connected and state fully hydrated!');
+    } catch (err) {
+        console.error('❌ Database Initialization Error:', err.message);
+        seedInitialMemoryCache();
+    }
+}
+
+function seedInitialMemoryCache() {
+    farmerDatabase["GW-1001"] = {
+        growerCode: "GW-1001",
+        pin: "1234",
+        farmerName: "Tatenda Nyoni",
+        farmerGroup: "Mkwasine Outgrowers Co-operative",
+        location: "Hippo Valley Estate",
+        balanceTati: 1250.00,
+        receiptLedger: [
+            {
+                gatepassId: "GP-88201",
+                growerCode: "GW-1001",
+                farmerName: "Tatenda Nyoni",
+                farmerGroup: "Mkwasine Outgrowers Co-operative",
+                bundleWeightTons: 6.2,
+                usdValuation: "$527.00 USD",
+                tatiMinted: "+6.20 TATI",
+                location: "Triangle Mill Gate 1",
+                timestamp: new Date(Date.now() - 3600000).toLocaleTimeString(),
+                type: "GATEPASS_CREDIT"
+            }
+        ]
+    };
+    farmerDatabase["GW-1002"] = {
+        growerCode: "GW-1002",
+        pin: "5678",
+        farmerName: "Runyararo Tongogara",
+        farmerGroup: "Hippo Valley Farmers Group",
+        location: "Hippo Valley Section 9",
+        balanceTati: 840.50,
+        receiptLedger: [
+            {
+                gatepassId: "GP-88104",
+                growerCode: "GW-1002",
+                farmerName: "Runyararo Tongogara",
+                farmerGroup: "Hippo Valley Farmers Group",
+                bundleWeightTons: 5.5,
+                usdValuation: "$467.50 USD",
+                tatiMinted: "+5.50 TATI",
+                location: "Hippo Valley Gate 2",
+                timestamp: new Date(Date.now() - 7200000).toLocaleTimeString(),
+                type: "GATEPASS_CREDIT"
+            }
+        ]
+    };
+}
+
+initDb();
 
 // ============================================================================
 // 1. GLOBAL RESERVE & TREASURY STATE ENGINE
@@ -65,61 +254,14 @@ for (let i = maxHistoryLength - 1; i >= 0; i--) {
 }
 
 // ============================================================================
-// 2. MULTI-TENANT FARMER DATABASE
+// 2. MULTI-TENANT FARMER DATABASE HELPERS
 // ============================================================================
-const farmerDatabase = {
-    "GW-1001": {
-        growerCode: "GW-1001",
-        pin: "1234",
-        farmerName: "Tatenda Nyoni",
-        farmerGroup: "Mkwasine Outgrowers Co-operative",
-        location: "Triangle Mill Section 4",
-        balanceTati: 1250.00,
-        receiptLedger: [
-            {
-                gatepassId: "GP-88201",
-                growerCode: "GW-1001",
-                farmerName: "Tatenda Nyoni",
-                farmerGroup: "Mkwasine Outgrowers Co-operative",
-                bundleWeightTons: 6.2,
-                usdValuation: "$527.00 USD",
-                tatiMinted: "+6.20 TATI",
-                location: "Triangle Mill Gate 1",
-                timestamp: new Date(Date.now() - 3600000).toLocaleTimeString(),
-                type: "GATEPASS_CREDIT"
-            }
-        ]
-    },
-    "GW-1002": {
-        growerCode: "GW-1002",
-        pin: "5678",
-        farmerName: "Simba Zvobgo",
-        farmerGroup: "Hippo Valley Farmers Group",
-        location: "Hippo Valley Section 9",
-        balanceTati: 840.50,
-        receiptLedger: [
-            {
-                gatepassId: "GP-88104",
-                growerCode: "GW-1002",
-                farmerName: "Simba Zvobgo",
-                farmerGroup: "Hippo Valley Farmers Group",
-                bundleWeightTons: 5.5,
-                usdValuation: "$467.50 USD",
-                tatiMinted: "+5.50 TATI",
-                location: "Hippo Valley Gate 2",
-                timestamp: new Date(Date.now() - 7200000).toLocaleTimeString(),
-                type: "GATEPASS_CREDIT"
-            }
-        ]
-    }
-};
-
 const phoneToGrowerMap = {
     '+263771112233': 'GW-1001',
     '+263774445566': 'GW-1002'
 };
 
-function getOrCreateFarmer(growerCode) {
+async function getOrCreateFarmer(growerCode) {
     const code = growerCode.toUpperCase().trim();
     if (!farmerDatabase[code]) {
         farmerDatabase[code] = {
@@ -131,6 +273,7 @@ function getOrCreateFarmer(growerCode) {
             balanceTati: 0.00,
             receiptLedger: []
         };
+        await saveFarmerDb(farmerDatabase[code]);
     }
     return farmerDatabase[code];
 }
@@ -261,6 +404,44 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('register_farmer', async (data) => {
+        const { farmerName, pin, farmerGroup, location } = data;
+
+        if (!farmerName || !pin || pin.toString().length !== 4) {
+            return socket.emit('auth_error', "Full name and a valid 4-digit PIN are required.");
+        }
+
+        let growerCode;
+        let uniqueFound = false;
+        while (!uniqueFound) {
+            const randomId = Math.floor(1000 + Math.random() * 9000);
+            growerCode = `GW-${randomId}`;
+            if (!farmerDatabase[growerCode]) uniqueFound = true;
+        }
+
+        const newFarmer = {
+            growerCode,
+            pin: pin.toString().trim(),
+            farmerName: farmerName.trim(),
+            farmerGroup: farmerGroup ? farmerGroup.trim() : "Independent Outgrowers Co-op",
+            location: location ? location.trim() : "Lowveld Region",
+            balanceTati: 0.00,
+            receiptLedger: []
+        };
+
+        farmerDatabase[growerCode] = newFarmer;
+        await saveFarmerDb(newFarmer);
+
+        socket.join(growerCode);
+        socket.emit('auth_success', {
+            growerCode: newFarmer.growerCode,
+            farmerName: newFarmer.farmerName,
+            farmerGroup: newFarmer.farmerGroup,
+            location: newFarmer.location,
+            balanceTati: newFarmer.balanceTati
+        });
+    });
+
     socket.on('send_message', (data) => {
         io.emit('receive_message', {
             sender: data.farmerName || data.growerCode,
@@ -272,8 +453,70 @@ io.on('connection', (socket) => {
 });
 
 // ============================================================================
-// 5. REST & TELECOM API ENDPOINTS (FULL USSD BRANCHING)
+// 5. REST & TELECOM API ENDPOINTS (FULL USSD BRANCHING + DB PERSISTENCE)
 // ============================================================================
+
+app.post('/api/auth/register', async (req, res) => {
+    const { farmerName, pin, farmerGroup, location, preferredCode } = req.body;
+
+    // Validation
+    if (!farmerName || !pin || pin.toString().length !== 4) {
+        return res.status(400).json({
+            success: false,
+            error: "Full name and a valid 4-digit PIN are required."
+        });
+    }
+
+    // Determine Grower Code (use requested code or auto-generate GW-XXXX)
+    let growerCode = preferredCode ? preferredCode.toUpperCase().trim() : '';
+
+    if (!growerCode) {
+        let uniqueFound = false;
+        while (!uniqueFound) {
+            const randomId = Math.floor(1000 + Math.random() * 9000);
+            growerCode = `GW-${randomId}`;
+            if (!farmerDatabase[growerCode]) {
+                uniqueFound = true;
+            }
+        }
+    } else if (farmerDatabase[growerCode]) {
+        return res.status(409).json({
+            success: false,
+            error: `Grower Code '${growerCode}' is already registered.`
+        });
+    }
+
+    // Construct New Farmer Account
+    const newFarmer = {
+        growerCode: growerCode,
+        pin: pin.toString().trim(),
+        farmerName: farmerName.trim(),
+        farmerGroup: farmerGroup ? farmerGroup.trim() : "Independent Outgrowers Co-operative",
+        location: location ? location.trim() : "Lowveld Sugarcane Belt",
+        balanceTati: 0.00,
+        receiptLedger: []
+    };
+
+    // 1. Save to in-memory state for instant fast access
+    farmerDatabase[growerCode] = newFarmer;
+
+    // 2. Persist directly to PostgreSQL database
+    await saveFarmerDb(newFarmer);
+
+    console.log(`👤 [NEW FARMER REGISTERED] ${newFarmer.farmerName} (${newFarmer.growerCode})`);
+
+    return res.status(201).json({
+        success: true,
+        message: "Account created successfully!",
+        farmer: {
+            growerCode: newFarmer.growerCode,
+            farmerName: newFarmer.farmerName,
+            farmerGroup: newFarmer.farmerGroup,
+            location: newFarmer.location,
+            balanceTati: newFarmer.balanceTati
+        }
+    });
+});
 
 app.post('/api/auth/login', (req, res) => {
     const { growerCode, pin } = req.body;
@@ -295,7 +538,7 @@ app.post('/api/auth/login', (req, res) => {
     res.status(401).json({ success: false, error: "Invalid credentials" });
 });
 
-app.post('/api/admin/approve-gatepass', (req, res) => {
+app.post('/api/admin/approve-gatepass', async (req, res) => {
     if (isMaintenanceMode) {
         return res.status(503).json({ success: false, error: "System is currently in maintenance mode until market demand recovers." });
     }
@@ -307,7 +550,7 @@ app.post('/api/admin/approve-gatepass', (req, res) => {
         return res.status(400).json({ success: false, error: "Invalid Grower Code or bundle tonnage." });
     }
 
-    const farmer = getOrCreateFarmer(growerCode);
+    const farmer = await getOrCreateFarmer(growerCode);
     const addedValueUsd = tons * currentTatiPrice;
 
     farmer.balanceTati += tons;
@@ -330,6 +573,10 @@ app.post('/api/admin/approve-gatepass', (req, res) => {
 
     farmer.receiptLedger.unshift(receipt);
 
+    // Persist to PostgreSQL
+    await saveFarmerDb(farmer);
+    await saveReceiptDb(receipt);
+
     io.to(farmer.growerCode).emit('balance_update', { balanceTati: farmer.balanceTati });
     io.to(farmer.growerCode).emit('new_receipt', receipt);
     io.emit('backing_update', sovereignBacking);
@@ -343,7 +590,7 @@ app.post('/api/admin/approve-gatepass', (req, res) => {
     });
 });
 
-app.post('/api/client/execute-payment', (req, res) => {
+app.post('/api/client/execute-payment', async (req, res) => {
     if (isMaintenanceMode) {
         return res.status(503).json({ success: false, error: "System in maintenance mode. Settlements suspended." });
     }
@@ -377,6 +624,10 @@ app.post('/api/client/execute-payment', (req, res) => {
 
     farmer.receiptLedger.unshift(paymentRecord);
 
+    // Persist to PostgreSQL
+    await saveFarmerDb(farmer);
+    await saveReceiptDb(paymentRecord);
+
     io.to(farmer.growerCode).emit('balance_update', { balanceTati: farmer.balanceTati });
     io.to(farmer.growerCode).emit('new_receipt', paymentRecord);
 
@@ -384,7 +635,7 @@ app.post('/api/client/execute-payment', (req, res) => {
 });
 
 // FULL USSD ROUTER (COMPLETE WITH TRANSFER & RECEIPT FLOWS)
-app.post('/api/ussd', (req, res) => {
+app.post('/api/ussd', async (req, res) => {
     const { phoneNumber, text } = req.body;
     const growerCode = phoneToGrowerMap[phoneNumber] || 'GW-1001';
     const farmer = farmerDatabase[growerCode];
@@ -484,6 +735,11 @@ Location: ${lastReceipt.location}`;
 
                 farmer.receiptLedger.unshift(senderDebit);
 
+                // Persist both farmers and transaction to PostgreSQL
+                await saveFarmerDb(farmer);
+                await saveFarmerDb(recipient);
+                await saveReceiptDb(senderDebit);
+
                 io.to(farmer.growerCode).emit('balance_update', { balanceTati: farmer.balanceTati });
                 io.to(farmer.growerCode).emit('new_receipt', senderDebit);
                 io.to(recipient.growerCode).emit('balance_update', { balanceTati: recipient.balanceTati });
@@ -535,6 +791,7 @@ function listen(targetPort) {
 * Core Server Port : http://0.0.0.0:${targetPort}
 * Dynamic Price    : Active (Appreciation Green Insights Enabled)
 * Maintenance Mode : Automatic Shutdown at $85.00 USD Floor
+* PostgreSQL DB    : Enabled & Synchronized
 =============================================================
         `);
     });
