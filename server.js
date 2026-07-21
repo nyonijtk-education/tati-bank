@@ -1,17 +1,27 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const path = require('path');
+const { execSync } = require('child_process');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-let PORT = parseInt(process.env.PORT, 10) || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static assets from project root
 app.use(express.static(__dirname));
+
+// Root route fallback for proxies/ngrok
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // ============================================================================
 // 1. GLOBAL RESERVE & TREASURY STATE ENGINE
@@ -125,19 +135,15 @@ function getOrCreateFarmer(growerCode) {
 }
 
 // ============================================================================
-// 3. DYNAMIC MARKET ENGINE (APPRECIATION, INSIGHTS & MAINTENANCE SHUTDOWN)
+// 3. DYNAMIC MARKET ENGINE
 // ============================================================================
 function generateMicroTick() {
-    // ------------------------------------------------------------------------
-    // A. MAINTENANCE SHUTDOWN HANDLER & DEMAND RECOVERY POLLING
-    // ------------------------------------------------------------------------
     if (isMaintenanceMode) {
         maintenanceCycleCount++;
         console.log(`🛠️ [SYSTEM MAINTENANCE] Trading suspended at $${ORIGINAL_BASELINE_FLOOR.toFixed(2)} USD floor. Checking demand... (${maintenanceCycleCount})`);
 
-        // Check for organic demand recovery every 4 cycles (12 seconds)
         if (maintenanceCycleCount >= 4) {
-            const demandRecovered = Math.random() > 0.35; // 65% recovery chance
+            const demandRecovered = Math.random() > 0.35;
             if (demandRecovered) {
                 isMaintenanceMode = false;
                 maintenanceCycleCount = 0;
@@ -155,18 +161,12 @@ function generateMicroTick() {
                 });
             }
         }
-        return; // Halt normal tick processing while in maintenance
+        return;
     }
 
-    // ------------------------------------------------------------------------
-    // B. DYNAMIC PRICE FLUCTUATION ENGINE (APPRECIATION / DEPRECIATION)
-    // ------------------------------------------------------------------------
-    const marketDrift = (Math.random() - 0.48) * 0.50; // Dynamic market movement
+    const marketDrift = (Math.random() - 0.48) * 0.50;
     let newPrice = parseFloat((currentTatiPrice + marketDrift).toFixed(2));
 
-    // ------------------------------------------------------------------------
-    // C. CRITICAL MAINTENANCE SHUTDOWN TRIGGER (At Baseline $85.00 USD)
-    // ------------------------------------------------------------------------
     if (newPrice <= ORIGINAL_BASELINE_FLOOR) {
         currentTatiPrice = ORIGINAL_BASELINE_FLOOR;
         isMaintenanceMode = true;
@@ -186,9 +186,6 @@ function generateMicroTick() {
         return;
     }
 
-    // ------------------------------------------------------------------------
-    // D. GREEN POSITIVE INSIGHT (Organic Price Appreciation without Buyback)
-    // ------------------------------------------------------------------------
     if (newPrice > currentTatiPrice) {
         const gainUsd = parseFloat((newPrice - currentTatiPrice).toFixed(2));
         currentTatiPrice = newPrice;
@@ -203,11 +200,9 @@ function generateMicroTick() {
         io.emit('organic_insight', positiveInsight);
         console.log(`🟢 [GREEN MARKET GAIN] ${positiveInsight.message}`);
     } else {
-        // Price depreciated slightly above the $85.00 floor
         currentTatiPrice = newPrice;
     }
 
-    // Update live FX Rates
     fxRates.USD = currentTatiPrice;
     fxRates.EUR = parseFloat((currentTatiPrice * 0.92).toFixed(2));
     fxRates.GBP = parseFloat((currentTatiPrice * 0.78).toFixed(2));
@@ -222,7 +217,6 @@ function generateMicroTick() {
     priceHistory.push(tickData);
     if (priceHistory.length > maxHistoryLength) priceHistory.shift();
 
-    // Broadcast live metrics
     io.emit('price_tick', tickData);
     io.emit('fx_update', fxRates);
     io.emit('backing_update', sovereignBacking);
@@ -231,7 +225,7 @@ function generateMicroTick() {
 setInterval(generateMicroTick, 3000);
 
 // ============================================================================
-// 4. WEBSOCKET ISOLATED PRIVATE ROOMS
+// 4. WEBSOCKET REAL-TIME EVENTS
 // ============================================================================
 io.on('connection', (socket) => {
 
@@ -277,7 +271,7 @@ io.on('connection', (socket) => {
 });
 
 // ============================================================================
-// 5. REST & TELECOM API ENDPOINTS
+// 5. REST & TELECOM API ENDPOINTS (FULL USSD BRANCHING)
 // ============================================================================
 
 app.post('/api/auth/login', (req, res) => {
@@ -388,13 +382,15 @@ app.post('/api/client/execute-payment', (req, res) => {
     res.json({ success: true, paymentRecord, newBalance: farmer.balanceTati });
 });
 
+// FULL USSD ROUTER (COMPLETE WITH TRANSFER & RECEIPT FLOWS)
 app.post('/api/ussd', (req, res) => {
     const { phoneNumber, text } = req.body;
     const growerCode = phoneToGrowerMap[phoneNumber] || 'GW-1001';
     const farmer = farmerDatabase[growerCode];
 
     let response = '';
-    const inputs = text ? text.split('*') : [];
+    const rawText = text || '';
+    const inputs = rawText.split('*').filter(i => i.trim() !== '');
 
     if (isMaintenanceMode) {
         response = `END 🛠️ TATI Bank Maintenance Mode
@@ -404,7 +400,8 @@ Service will automatically resume when sugarcane market demand recovers.`;
         return res.send(response);
     }
 
-    if (text === '') {
+    // Main Menu
+    if (inputs.length === 0) {
         response = `CON 🌳 TATI Bank Mobile
 Welcome ${farmer.farmerName.split(' ')[0]}
 1. Check Balance
@@ -412,27 +409,100 @@ Welcome ${farmer.farmerName.split(' ')[0]}
 3. Transfer TATI
 4. Sugarcane Spot Rate
 0. Exit`;
-    } else if (text === '1') {
-        response = `CON Enter your 4-digit PIN:`;
-    } else if (inputs.length === 2 && inputs[0] === '1') {
-        const pinInput = inputs[1];
-        if (pinInput === farmer.pin) {
-            const usdVal = (farmer.balanceTati * currentTatiPrice).toFixed(2);
-            response = `END 🏛️ TATI Bank Balance
+    } 
+    // Option 1: Balance Flow
+    else if (inputs[0] === '1') {
+        if (inputs.length === 1) {
+            response = `CON Enter your 4-digit PIN:`;
+        } else {
+            const pinInput = inputs[1];
+            if (pinInput === farmer.pin) {
+                const usdVal = (farmer.balanceTati * currentTatiPrice).toFixed(2);
+                response = `END 🏛️ TATI Bank Balance
 Farmer: ${farmer.farmerName}
 Code: ${farmer.growerCode}
 Balance: ${farmer.balanceTati.toLocaleString()} TATI
 Est Value: $${usdVal} USD`;
-        } else {
-            response = `END ❌ Invalid PIN. Access Denied.`;
+            } else {
+                response = `END ❌ Invalid PIN. Access Denied.`;
+            }
         }
-    } else if (text === '4') {
+    } 
+    // Option 2: Last Gatepass Receipt
+    else if (inputs[0] === '2') {
+        const lastReceipt = farmer.receiptLedger[0];
+        if (lastReceipt) {
+            response = `END 📄 Last Receipt (${lastReceipt.gatepassId})
+Weight: ${lastReceipt.bundleWeightTons} Tons
+Valuation: ${lastReceipt.usdValuation}
+Minted: ${lastReceipt.tatiMinted}
+Location: ${lastReceipt.location}`;
+        } else {
+            response = `END 📄 No receipt history found for ${farmer.growerCode}.`;
+        }
+    } 
+    // Option 3: Transfer TATI Flow
+    else if (inputs[0] === '3') {
+        if (inputs.length === 1) {
+            response = `CON Enter Recipient Grower Code (e.g. GW-1002):`;
+        } else if (inputs.length === 2) {
+            response = `CON Enter TATI Amount to Transfer:`;
+        } else if (inputs.length === 3) {
+            response = `CON Enter 4-Digit PIN to Confirm Transfer:`;
+        } else if (inputs.length >= 4) {
+            const recipientCode = inputs[1].toUpperCase().trim();
+            const transferAmt = parseFloat(inputs[2]);
+            const pinInput = inputs[3];
+
+            if (pinInput !== farmer.pin) {
+                response = `END ❌ Invalid PIN. Transfer Cancelled.`;
+            } else if (isNaN(transferAmt) || transferAmt <= 0) {
+                response = `END ❌ Invalid Transfer Amount.`;
+            } else if (transferAmt > farmer.balanceTati) {
+                response = `END ❌ Insufficient TATI Balance. Available: ${farmer.balanceTati} TATI.`;
+            } else if (!farmerDatabase[recipientCode]) {
+                response = `END ❌ Recipient Grower (${recipientCode}) Not Found.`;
+            } else {
+                // Execute Transfer
+                const recipient = farmerDatabase[recipientCode];
+                farmer.balanceTati -= transferAmt;
+                recipient.balanceTati += transferAmt;
+
+                const senderDebit = {
+                    gatepassId: `TRF-${Math.floor(100000 + Math.random() * 900000)}`,
+                    growerCode: farmer.growerCode,
+                    farmerName: recipient.farmerName,
+                    farmerGroup: recipient.farmerGroup,
+                    bundleWeightTons: 0,
+                    usdValuation: `$${(transferAmt * currentTatiPrice).toFixed(2)} USD`,
+                    tatiMinted: `-${transferAmt.toFixed(2)} TATI`,
+                    location: "USSD Peer Transfer",
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: "PAYMENT_DEBIT"
+                };
+
+                farmer.receiptLedger.unshift(senderDebit);
+
+                io.to(farmer.growerCode).emit('balance_update', { balanceTati: farmer.balanceTati });
+                io.to(farmer.growerCode).emit('new_receipt', senderDebit);
+                io.to(recipient.growerCode).emit('balance_update', { balanceTati: recipient.balanceTati });
+
+                response = `END ✅ Transfer Successful!
+Sent: ${transferAmt} TATI to ${recipient.farmerName} (${recipient.growerCode})
+New Balance: ${farmer.balanceTati} TATI`;
+            }
+        }
+    } 
+    // Option 4: Spot Rate
+    else if (inputs[0] === '4') {
         response = `END 📈 TATI Spot Valuation
 1 TATI = 1 Tonne Sugarcane
 Current Spot: $${currentTatiPrice.toFixed(2)} USD
 1 TATI = ${fxRates.ZWG.toFixed(2)} ZWG
 1 TATI = ${fxRates.ZAR.toFixed(2)} ZAR`;
-    } else {
+    } 
+    // Option 0 or default
+    else {
         response = `END Thank you for using TATI Bank.`;
     }
 
@@ -441,7 +511,7 @@ Current Spot: $${currentTatiPrice.toFixed(2)} USD
 });
 
 // ============================================================================
-// 6. SHUTDOWN & PORT ENGINE
+// 6. SHUTDOWN & AUTOMATIC PORT CLEANUP ENGINE
 // ============================================================================
 const shutdown = () => {
     console.log('\n🌳 Gracefully shutting down TATI Bank server...');
@@ -454,27 +524,38 @@ const shutdown = () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-function startServer(portToTry) {
-    const instance = server.listen(portToTry, () => {
+function listen(targetPort) {
+    server.listen(targetPort, () => {
         console.log(`
 =============================================================
 🌳 TATI BANK SERVER ENGINE ONLINE
 =============================================================
-* Core Server Port : http://localhost:${portToTry}
+* Core Server Port : http://localhost:${targetPort}
 * Dynamic Price    : Active (Appreciation Green Insights Enabled)
 * Maintenance Mode : Automatic Shutdown at $85.00 USD Floor
 =============================================================
         `);
     });
-
-    instance.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.log(`⚠️  Port ${portToTry} occupied. Switching to port ${portToTry + 1}...`);
-            startServer(portToTry + 1);
-        } else {
-            console.error('❌ Startup error:', err);
-        }
-    });
 }
 
-startServer(PORT);
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.log(`⚠️ Port ${PORT} occupied. Executing fallback killall on port ${PORT}...`);
+        try {
+            if (process.platform === 'win32') {
+                execSync(`npx kill-port ${PORT}`);
+            } else {
+                execSync(`lsof -ti:${PORT} | xargs kill -9`);
+            }
+            console.log(`✅ Cleared lingering processes on port ${PORT}. Retrying startup...`);
+            setTimeout(() => listen(PORT), 800);
+        } catch (e) {
+            console.error(`❌ Automated fallback port clear failed: ${e.message}`);
+            process.exit(1);
+        }
+    } else {
+        console.error('❌ Startup error:', err);
+    }
+});
+
+listen(PORT);
