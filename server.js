@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -35,10 +36,13 @@ const pool = new Pool({
         : false
 });
 
-// In-Memory Database Cache (Hydrated from PostgreSQL)
+// In-Memory Database Caches (Hydrated from PostgreSQL)
 const farmerDatabase = {};
+const investorDatabase = {};
 
-// Helper: Save/Update Farmer in PostgreSQL
+// ----------------------------------------------------------------------------
+// FARMER DB HELPERS (UNTOUCHED GROWER CODE)
+// ----------------------------------------------------------------------------
 async function saveFarmerDb(farmer) {
     if (!process.env.DATABASE_URL) return;
     try {
@@ -57,7 +61,6 @@ async function saveFarmerDb(farmer) {
     }
 }
 
-// Helper: Save Receipt/Transaction in PostgreSQL
 async function saveReceiptDb(receipt) {
     if (!process.env.DATABASE_URL) return;
     try {
@@ -75,6 +78,42 @@ async function saveReceiptDb(receipt) {
         ]);
     } catch (err) {
         console.error('❌ DB Receipt Save Error:', err.message);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// INVESTOR DB HELPERS (INVESTOR BRANCH)
+// ----------------------------------------------------------------------------
+async function saveInvestorDb(investor) {
+    if (!process.env.DATABASE_URL) return;
+    try {
+        await pool.query(`
+            INSERT INTO investors (investor_id, email, pin, investor_name, usd_balance, tati_balance)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (investor_id) DO UPDATE SET
+                email = EXCLUDED.email,
+                pin = EXCLUDED.pin,
+                investor_name = EXCLUDED.investor_name,
+                usd_balance = EXCLUDED.usd_balance,
+                tati_balance = EXCLUDED.tati_balance;
+        `, [investor.investorId, investor.email, investor.pin, investor.investorName, investor.usdBalance, investor.tatiBalance]);
+    } catch (err) {
+        console.error('❌ DB Investor Save Error:', err.message);
+    }
+}
+
+async function saveInvestorTxDb(tx) {
+    if (!process.env.DATABASE_URL) return;
+    try {
+        await pool.query(`
+            INSERT INTO investor_transactions (
+                tx_id, investor_id, type, amount_usd, amount_tati, payment_gateway, status, timestamp
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (tx_id) DO NOTHING;
+        `, [tx.txId, tx.investorId, tx.type, tx.amountUsd, tx.amountTati, tx.paymentGateway, tx.status, tx.timestamp]);
+    } catch (err) {
+        console.error('❌ DB Investor Tx Save Error:', err.message);
     }
 }
 
@@ -110,9 +149,30 @@ async function initDb() {
                 timestamp VARCHAR(100),
                 type VARCHAR(50)
             );
+
+            CREATE TABLE IF NOT EXISTS investors (
+                investor_id VARCHAR(50) PRIMARY KEY,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                pin VARCHAR(10) NOT NULL,
+                investor_name VARCHAR(100) NOT NULL,
+                usd_balance NUMERIC(12, 2) DEFAULT 0.00,
+                tati_balance NUMERIC(12, 2) DEFAULT 0.00
+            );
+
+            CREATE TABLE IF NOT EXISTS investor_transactions (
+                id SERIAL PRIMARY KEY,
+                tx_id VARCHAR(50) UNIQUE NOT NULL,
+                investor_id VARCHAR(50) REFERENCES investors(investor_id),
+                type VARCHAR(20) NOT NULL,
+                amount_usd NUMERIC(12, 2),
+                amount_tati NUMERIC(12, 2),
+                payment_gateway VARCHAR(50),
+                status VARCHAR(20) DEFAULT 'COMPLETED',
+                timestamp VARCHAR(100)
+            );
         `);
 
-        // Check if database is empty; seed initial records if so
+        // Seed initial records if empty
         const resFarmers = await pool.query('SELECT * FROM farmers;');
         if (resFarmers.rows.length === 0) {
             console.log('🌱 Seeding initial records into PostgreSQL...');
@@ -124,9 +184,16 @@ async function initDb() {
                     await saveReceiptDb(r);
                 }
             }
+            for (const id of Object.keys(investorDatabase)) {
+                const inv = investorDatabase[id];
+                await saveInvestorDb(inv);
+                for (const tx of inv.transactionLedger) {
+                    await saveInvestorTxDb(tx);
+                }
+            }
         } else {
-            // Load existing database into RAM cache
             console.log('🔄 Hydrating memory cache from PostgreSQL database...');
+            // Hydrate Farmers
             for (const row of resFarmers.rows) {
                 farmerDatabase[row.grower_code] = {
                     growerCode: row.grower_code,
@@ -156,6 +223,36 @@ async function initDb() {
                     });
                 }
             }
+
+            // Hydrate Investors
+            const resInvestors = await pool.query('SELECT * FROM investors;');
+            for (const row of resInvestors.rows) {
+                investorDatabase[row.investor_id] = {
+                    investorId: row.investor_id,
+                    email: row.email,
+                    pin: row.pin,
+                    investorName: row.investor_name,
+                    usdBalance: parseFloat(row.usd_balance),
+                    tatiBalance: parseFloat(row.tati_balance),
+                    transactionLedger: []
+                };
+            }
+
+            const resInvTx = await pool.query('SELECT * FROM investor_transactions ORDER BY id DESC;');
+            for (const row of resInvTx.rows) {
+                if (investorDatabase[row.investor_id]) {
+                    investorDatabase[row.investor_id].transactionLedger.push({
+                        txId: row.tx_id,
+                        investorId: row.investor_id,
+                        type: row.type,
+                        amountUsd: parseFloat(row.amount_usd),
+                        amountTati: parseFloat(row.amount_tati),
+                        paymentGateway: row.payment_gateway,
+                        status: row.status,
+                        timestamp: row.timestamp
+                    });
+                }
+            }
         }
         console.log('✅ PostgreSQL Database connected and state fully hydrated!');
     } catch (err) {
@@ -165,6 +262,7 @@ async function initDb() {
 }
 
 function seedInitialMemoryCache() {
+    // Grower Seed Data
     farmerDatabase["GW-1001"] = {
         growerCode: "GW-1001",
         pin: "1234",
@@ -206,6 +304,28 @@ function seedInitialMemoryCache() {
                 location: "Mwenezi District Gate",
                 timestamp: new Date(Date.now() - 7200000).toLocaleTimeString(),
                 type: "GATEPASS_CREDIT"
+            }
+        ]
+    };
+
+    // Investor Seed Data
+    investorDatabase["INV-2001"] = {
+        investorId: "INV-2001",
+        email: "investor@tati.com",
+        pin: "1234",
+        investorName: "Lowveld Agribusiness Capital",
+        usdBalance: 15000.00,
+        tatiBalance: 250.00,
+        transactionLedger: [
+            {
+                txId: "TX-9901",
+                investorId: "INV-2001",
+                type: "DEPOSIT",
+                amountUsd: 15000.00,
+                amountTati: 0.00,
+                paymentGateway: "Stripe",
+                status: "COMPLETED",
+                timestamp: new Date(Date.now() - 14400000).toLocaleTimeString()
             }
         ]
     };
@@ -255,7 +375,7 @@ for (let i = maxHistoryLength - 1; i >= 0; i--) {
 }
 
 // ============================================================================
-// 2. MULTI-TENANT FARMER DATABASE HELPERS
+// 2. MULTI-TENANT FARMER & INVESTOR DATABASE HELPERS
 // ============================================================================
 const phoneToGrowerMap = {
     '+263771112233': 'GW-1001',
@@ -277,6 +397,15 @@ async function getOrCreateFarmer(growerCode) {
         await saveFarmerDb(farmerDatabase[code]);
     }
     return farmerDatabase[code];
+}
+
+// Supports lookup by Email or Investor ID case-insensitively
+function findInvestorByEmail(emailOrId) {
+    if (!emailOrId) return null;
+    const searchStr = emailOrId.toLowerCase().trim();
+    return Object.values(investorDatabase).find(
+        inv => inv.email.toLowerCase() === searchStr || inv.investorId.toLowerCase() === searchStr
+    ) || null;
 }
 
 // ============================================================================
@@ -370,10 +499,13 @@ function generateMicroTick() {
 setInterval(generateMicroTick, 3000);
 
 // ============================================================================
-// 4. WEBSOCKET REAL-TIME EVENTS
+// 4. WEBSOCKET REAL-TIME EVENTS (GROWER & INVESTOR SUPPORT)
 // ============================================================================
 io.on('connection', (socket) => {
 
+    // ------------------------------------------------------------------------
+    // GROWER SOCKET EVENTS
+    // ------------------------------------------------------------------------
     socket.on('authenticate_farmer', ({ growerCode, pin }) => {
         const code = growerCode ? growerCode.toUpperCase().trim() : "";
         const farmer = farmerDatabase[code];
@@ -381,6 +513,7 @@ io.on('connection', (socket) => {
         if (farmer && farmer.pin === pin) {
             socket.join(code);
             socket.emit('auth_success', {
+                userType: 'GROWER',
                 growerCode: farmer.growerCode,
                 farmerName: farmer.farmerName,
                 farmerGroup: farmer.farmerGroup,
@@ -437,6 +570,7 @@ io.on('connection', (socket) => {
 
         socket.join(growerCode);
         socket.emit('auth_success', {
+            userType: 'GROWER',
             growerCode: newFarmer.growerCode,
             farmerName: newFarmer.farmerName,
             farmerGroup: newFarmer.farmerGroup,
@@ -454,10 +588,38 @@ io.on('connection', (socket) => {
         console.log(`👤 [NEW FARMER REGISTERED] ${newFarmer.farmerName} (${newFarmer.growerCode})`);
     });
 
+    // ------------------------------------------------------------------------
+    // INVESTOR SOCKET EVENTS
+    // ------------------------------------------------------------------------
+    socket.on('authenticate_investor', ({ email, pin }) => {
+        const investor = findInvestorByEmail(email);
+
+        if (investor && investor.pin.toString().trim() === pin.toString().trim()) {
+            socket.join(investor.investorId);
+            socket.emit('investor_auth_success', {
+                userType: 'INVESTOR',
+                investorId: investor.investorId,
+                email: investor.email,
+                investorName: investor.investorName,
+                usdBalance: investor.usdBalance,
+                tatiBalance: investor.tatiBalance,
+                bankName: sovereignBacking.bankName,
+                subtitle: sovereignBacking.subtitle
+            });
+
+            socket.emit('investor_tx_history', investor.transactionLedger);
+            socket.emit('price_history', priceHistory);
+            socket.emit('fx_update', fxRates);
+            socket.emit('backing_update', sovereignBacking);
+        } else {
+            socket.emit('auth_error', "Invalid Investor email or PIN.");
+        }
+    });
+
     socket.on('send_message', (data) => {
         io.emit('receive_message', {
-            sender: data.farmerName || data.growerCode,
-            farmerGroup: data.farmerGroup || "Outgrower",
+            sender: data.farmerName || data.investorName || data.growerCode || "Anonymous",
+            farmerGroup: data.farmerGroup || data.userType || "Member",
             text: data.text,
             timestamp: new Date().toLocaleTimeString()
         });
@@ -465,9 +627,12 @@ io.on('connection', (socket) => {
 });
 
 // ============================================================================
-// 5. REST & TELECOM API ENDPOINTS
+// 5. REST & TELECOM API ENDPOINTS (GROWER & INVESTOR BRANCHES)
 // ============================================================================
 
+// ----------------------------------------------------------------------------
+// GROWER REST ROUTES
+// ----------------------------------------------------------------------------
 app.post('/api/auth/register', async (req, res) => {
     const { farmerName, pin, farmerGroup, location, preferredCode } = req.body;
 
@@ -532,6 +697,7 @@ app.post('/api/auth/login', (req, res) => {
     if (farmer && farmer.pin === pin) {
         return res.json({
             success: true,
+            userType: "GROWER",
             farmer: {
                 growerCode: farmer.growerCode,
                 farmerName: farmer.farmerName,
@@ -638,185 +804,189 @@ app.post('/api/client/execute-payment', async (req, res) => {
     res.json({ success: true, paymentRecord, newBalance: farmer.balanceTati });
 });
 
-// USSD ROUTER
-app.post('/api/ussd', async (req, res) => {
-    const { phoneNumber, text } = req.body;
-    const growerCode = phoneToGrowerMap[phoneNumber] || 'GW-1001';
-    const farmer = farmerDatabase[growerCode];
+// ----------------------------------------------------------------------------
+// INVESTOR REST ROUTES (REGISTER, LOGIN, DEPOSIT, TRADE)
+// ----------------------------------------------------------------------------
+app.post('/api/investor/register', async (req, res) => {
+    try {
+        const { email, pin, investorName } = req.body;
 
-    let response = '';
-    const rawText = text || '';
-    const inputs = rawText.split('*').filter(i => i.trim() !== '');
+        if (!email || !pin || pin.toString().length !== 4 || !investorName) {
+            return res.status(400).json({
+                success: false,
+                error: "Valid Email, Full Name, and a 4-digit PIN are required."
+            });
+        }
 
+        if (findInvestorByEmail(email)) {
+            return res.status(409).json({ success: false, error: "An investor with this email or account already exists." });
+        }
+
+        const randomId = Math.floor(2000 + Math.random() * 8000);
+        const investorId = `INV-${randomId}`;
+
+        const newInvestor = {
+            investorId,
+            email: email.toLowerCase().trim(),
+            pin: pin.toString().trim(),
+            investorName: investorName.trim(),
+            usdBalance: 0.00,
+            tatiBalance: 0.00,
+            transactionLedger: []
+        };
+
+        investorDatabase[investorId] = newInvestor;
+        await saveInvestorDb(newInvestor);
+
+        return res.status(201).json({
+            success: true,
+            message: "Investor account created successfully!",
+            investor: {
+                investorId: newInvestor.investorId,
+                email: newInvestor.email,
+                investorName: newInvestor.investorName,
+                usdBalance: newInvestor.usdBalance,
+                tatiBalance: newInvestor.tatiBalance
+            }
+        });
+    } catch (err) {
+        console.error('❌ Investor Registration Error:', err.message);
+        res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+});
+
+app.post('/api/investor/login', (req, res) => {
+    const { email, pin } = req.body;
+    const investor = findInvestorByEmail(email);
+
+    if (investor && investor.pin.toString().trim() === pin.toString().trim()) {
+        return res.json({
+            success: true,
+            userType: "INVESTOR",
+            investor: {
+                investorId: investor.investorId,
+                email: investor.email,
+                investorName: investor.investorName,
+                usdBalance: investor.usdBalance,
+                tatiBalance: investor.tatiBalance
+            }
+        });
+    }
+    res.status(401).json({ success: false, error: "Invalid investor email or PIN." });
+});
+
+app.post('/api/investor/deposit', async (req, res) => {
+    const { investorId, amountUsd, paymentGateway } = req.body;
+    const investor = investorDatabase[investorId] || findInvestorByEmail(investorId);
+    const amt = parseFloat(amountUsd);
+
+    if (!investor) return res.status(404).json({ success: false, error: "Investor not found." });
+    if (isNaN(amt) || amt <= 0) return res.status(400).json({ success: false, error: "Invalid deposit amount." });
+
+    investor.usdBalance += amt;
+
+    const tx = {
+        txId: `TX-${Math.floor(1000 + Math.random() * 9000)}`,
+        investorId: investor.investorId,
+        type: "DEPOSIT",
+        amountUsd: amt,
+        amountTati: 0.00,
+        paymentGateway: paymentGateway || "Stripe",
+        status: "COMPLETED",
+        timestamp: new Date().toLocaleTimeString()
+    };
+
+    investor.transactionLedger.unshift(tx);
+    await saveInvestorDb(investor);
+    await saveInvestorTxDb(tx);
+
+    io.to(investor.investorId).emit('investor_balance_update', {
+        usdBalance: investor.usdBalance,
+        tatiBalance: investor.tatiBalance
+    });
+    io.to(investor.investorId).emit('new_investor_tx', tx);
+
+    res.json({ success: true, tx, newUsdBalance: investor.usdBalance });
+});
+
+app.post('/api/investor/trade', async (req, res) => {
     if (isMaintenanceMode) {
-        response = `END 🛠️ TATI BANK Maintenance Mode
-System suspended as spot price touched baseline $85.00 USD floor.
-Service will automatically resume when sugarcane market demand recovers.`;
-        res.set('Content-Type', 'text/plain');
-        return res.send(response);
+        return res.status(503).json({ success: false, error: "Trading suspended while system is in maintenance mode." });
     }
 
-    // Main Menu
-    if (inputs.length === 0) {
-        response = `CON 🌳 TATI BANK Mobile
-Welcome ${farmer.farmerName.split(' ')[0]}
-1. Check Balance
-2. Last Gatepass Receipt
-3. Transfer TATI
-4. Sugarcane Spot Rate
-0. Exit`;
-    } 
-    // Option 1: Balance Flow
-    else if (inputs[0] === '1') {
-        if (inputs.length === 1) {
-            response = `CON Enter your 4-digit PIN:`;
-        } else {
-            const pinInput = inputs[1];
-            if (pinInput === farmer.pin) {
-                const usdVal = (farmer.balanceTati * currentTatiPrice).toFixed(2);
-                response = `END 🏛️ TATI BANK Balance
-Farmer: ${farmer.farmerName}
-Code: ${farmer.growerCode}
-Balance: ${farmer.balanceTati.toLocaleString()} TATI
-Est Value: $${usdVal} USD`;
-            } else {
-                response = `END ❌ Invalid PIN. Access Denied.`;
-            }
+    const { investorId, action, amountTati } = req.body; // action: 'BUY' or 'SELL'
+    const investor = investorDatabase[investorId] || findInvestorByEmail(investorId);
+    const amt = parseFloat(amountTati);
+
+    if (!investor) return res.status(404).json({ success: false, error: "Investor account not found." });
+    if (isNaN(amt) || amt <= 0) return res.status(400).json({ success: false, error: "Invalid TATI amount." });
+
+    const costUsd = parseFloat((amt * currentTatiPrice).toFixed(2));
+
+    if (action === 'BUY') {
+        if (investor.usdBalance < costUsd) {
+            return res.status(400).json({ success: false, error: "Insufficient USD funds for purchase." });
         }
-    } 
-    // Option 2: Last Gatepass Receipt
-    else if (inputs[0] === '2') {
-        const lastReceipt = farmer.receiptLedger[0];
-        if (lastReceipt) {
-            response = `END 📄 Last Receipt (${lastReceipt.gatepassId})
-Weight: ${lastReceipt.bundleWeightTons} Tons
-Valuation: ${lastReceipt.usdValuation}
-Minted: ${lastReceipt.tatiMinted}
-Location: ${lastReceipt.location}`;
-        } else {
-            response = `END 📄 No receipt history found for ${farmer.growerCode}.`;
+        investor.usdBalance -= costUsd;
+        investor.tatiBalance += amt;
+    } else if (action === 'SELL') {
+        if (investor.tatiBalance < amt) {
+            return res.status(400).json({ success: false, error: "Insufficient TATI balance to sell." });
         }
-    } 
-    // Option 3: Transfer TATI Flow
-    else if (inputs[0] === '3') {
-        if (inputs.length === 1) {
-            response = `CON Enter Recipient Grower Code (e.g. GW-1002):`;
-        } else if (inputs.length === 2) {
-            response = `CON Enter TATI Amount to Transfer:`;
-        } else if (inputs.length === 3) {
-            response = `CON Enter 4-Digit PIN to Confirm Transfer:`;
-        } else if (inputs.length >= 4) {
-            const recipientCode = inputs[1].toUpperCase().trim();
-            const transferAmt = parseFloat(inputs[2]);
-            const pinInput = inputs[3];
-
-            if (pinInput !== farmer.pin) {
-                response = `END ❌ Invalid PIN. Transfer Cancelled.`;
-            } else if (isNaN(transferAmt) || transferAmt <= 0) {
-                response = `END ❌ Invalid Transfer Amount.`;
-            } else if (transferAmt > farmer.balanceTati) {
-                response = `END ❌ Insufficient TATI Balance. Available: ${farmer.balanceTati} TATI.`;
-            } else if (!farmerDatabase[recipientCode]) {
-                response = `END ❌ Recipient Grower (${recipientCode}) Not Found.`;
-            } else {
-                const recipient = farmerDatabase[recipientCode];
-                farmer.balanceTati -= transferAmt;
-                recipient.balanceTati += transferAmt;
-
-                const senderDebit = {
-                    gatepassId: `TRF-${Math.floor(100000 + Math.random() * 900000)}`,
-                    growerCode: farmer.growerCode,
-                    farmerName: recipient.farmerName,
-                    farmerGroup: recipient.farmerGroup,
-                    bundleWeightTons: 0,
-                    usdValuation: `$${(transferAmt * currentTatiPrice).toFixed(2)} USD`,
-                    tatiMinted: `-${transferAmt.toFixed(2)} TATI`,
-                    location: "USSD Peer Transfer",
-                    timestamp: new Date().toLocaleTimeString(),
-                    type: "PAYMENT_DEBIT"
-                };
-
-                farmer.receiptLedger.unshift(senderDebit);
-
-                await saveFarmerDb(farmer);
-                await saveFarmerDb(recipient);
-                await saveReceiptDb(senderDebit);
-
-                io.to(farmer.growerCode).emit('balance_update', { balanceTati: farmer.balanceTati });
-                io.to(farmer.growerCode).emit('new_receipt', senderDebit);
-                io.to(recipient.growerCode).emit('balance_update', { balanceTati: recipient.balanceTati });
-
-                response = `END ✅ Transfer Successful!
-Sent: ${transferAmt} TATI to ${recipient.farmerName} (${recipient.growerCode})
-New Balance: ${farmer.balanceTati} TATI`;
-            }
-        }
-    } 
-    // Option 4: Spot Rate
-    else if (inputs[0] === '4') {
-        response = `END 📈 TATI Spot Valuation
-1 TATI = 1 Tonne Sugarcane
-Current Spot: $${currentTatiPrice.toFixed(2)} USD
-1 TATI = ${fxRates.ZWG.toFixed(2)} ZWG
-1 TATI = ${fxRates.ZAR.toFixed(2)} ZAR`;
-    } 
-    // Option 0 or default
-    else {
-        response = `END Thank you for using TATI BANK.`;
-    }
-
-    res.set('Content-Type', 'text/plain');
-    res.send(response);
-});
-
-// ============================================================================
-// 6. SHUTDOWN & AUTOMATIC PORT CLEANUP ENGINE
-// ============================================================================
-const shutdown = () => {
-    console.log('\n🌳 Gracefully shutting down TATI BANK server...');
-    server.close(() => {
-        console.log('✅ Port released successfully.');
-        process.exit(0);
-    });
-};
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-
-function listen(targetPort) {
-    server.listen(targetPort, '0.0.0.0', () => {
-        console.log(`
-=============================================================
-🌳 TATI BANK SERVER ENGINE ONLINE
-=============================================================
-* Core Server Port : http://0.0.0.0:${targetPort}
-* Subtitle         : TONGAAT HULETT ZIMBABWE
-* Dynamic Price    : Active (Appreciation Green Insights Enabled)
-* Maintenance Mode : Automatic Shutdown at $85.00 USD Floor
-* PostgreSQL DB    : Enabled & Synchronized
-=============================================================
-        `);
-    });
-}
-
-server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.log(`⚠️ Port ${PORT} occupied. Executing fallback killall on port ${PORT}...`);
-        try {
-            if (process.platform === 'win32') {
-                execSync(`npx kill-port ${PORT}`);
-            } else {
-                execSync(`lsof -ti:${PORT} | xargs kill -9`);
-            }
-            console.log(`✅ Cleared lingering processes on port ${PORT}. Retrying startup...`);
-            setTimeout(() => listen(PORT), 800);
-        } catch (e) {
-            console.error(`❌ Automated fallback port clear failed: ${e.message}`);
-            process.exit(1);
-        }
+        investor.tatiBalance -= amt;
+        investor.usdBalance += costUsd;
     } else {
-        console.error('❌ Startup error:', err);
+        return res.status(400).json({ success: false, error: "Invalid action type. Must be BUY or SELL." });
     }
+
+    const tx = {
+        txId: `TX-${Math.floor(1000 + Math.random() * 9000)}`,
+        investorId: investor.investorId,
+        type: action === 'BUY' ? 'TRADE_BUY' : 'TRADE_SELL',
+        amountUsd: costUsd,
+        amountTati: amt,
+        paymentGateway: "Order Book Engine",
+        status: "COMPLETED",
+        timestamp: new Date().toLocaleTimeString()
+    };
+
+    investor.transactionLedger.unshift(tx);
+    await saveInvestorDb(investor);
+    await saveInvestorTxDb(tx);
+
+    io.to(investor.investorId).emit('investor_balance_update', {
+        usdBalance: investor.usdBalance,
+        tatiBalance: investor.tatiBalance
+    });
+    io.to(investor.investorId).emit('new_investor_tx', tx);
+
+    res.json({
+        success: true,
+        action,
+        costUsd,
+        amountTati: amt,
+        newUsdBalance: investor.usdBalance,
+        newTatiBalance: investor.tatiBalance
+    });
 });
 
-listen(PORT);
+// ----------------------------------------------------------------------------
+// GLOBAL SYSTEM STATE ROUTE
+// ----------------------------------------------------------------------------
+app.get('/api/state', (req, res) => {
+    res.json({
+        success: true,
+        currentTatiPrice,
+        isMaintenanceMode,
+        sovereignBacking,
+        fxRates,
+        priceHistory
+    });
+});
+
+// ============================================================================
+// SERVER STARTUP LISTENER
+// ============================================================================
+server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+});
