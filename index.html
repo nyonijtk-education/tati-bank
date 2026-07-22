@@ -14,6 +14,8 @@
             --bg-accent: #1e2c4d;
             --green-glow: #10b981;
             --gold-accent: #f59e0b;
+            --blue-accent: #3b82f6;
+            --purple-accent: #8b5cf6;
             --red-alert: #ef4444;
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
@@ -23,7 +25,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-primary); color: var(--text-main); min-height: 100vh; padding: 20px; }
 
-        /* Branding SVG Icon */
+        /* Branding Logo SVG */
         .brand-logo {
             width: 42px; height: 42px; fill: none; stroke: var(--green-glow);
             stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
@@ -40,7 +42,7 @@
 
         .login-card {
             background: var(--bg-card); border: 1px solid var(--border-color);
-            padding: 36px 32px; border-radius: 16px; width: 100%; max-width: 460px;
+            padding: 36px 32px; border-radius: 16px; width: 100%; max-width: 520px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center;
         }
 
@@ -51,40 +53,55 @@
         .login-card h2 { color: var(--green-glow); font-size: 2rem; font-weight: 800; letter-spacing: 1px; }
         .login-card .subtitle { color: var(--gold-accent); font-size: 0.8rem; letter-spacing: 1.8px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; }
 
-        /* Tab Switcher */
+        /* Triple-Role Selector Tabs */
+        .role-selector {
+            display: flex; background: var(--bg-primary); border: 1px solid var(--border-color);
+            border-radius: 10px; margin-bottom: 16px; padding: 4px; gap: 4px;
+        }
+        .role-btn {
+            flex: 1; padding: 10px 6px; font-weight: 700; font-size: 0.78rem; color: var(--text-muted);
+            background: transparent; border: none; cursor: pointer; border-radius: 8px; transition: all 0.2s;
+        }
+        .role-btn.active-grower { background: var(--green-glow); color: #000; }
+        .role-btn.active-investor { background: var(--blue-accent); color: #fff; }
+        .role-btn.active-vendor { background: var(--purple-accent); color: #fff; }
+
+        /* Sub Auth Tabs */
         .auth-tabs {
             display: flex; background: var(--bg-primary); border: 1px solid var(--border-color);
             border-radius: 8px; margin-bottom: 20px; overflow: hidden; padding: 3px;
         }
         .auth-tab {
-            flex: 1; padding: 10px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);
+            flex: 1; padding: 8px; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);
             background: transparent; border: none; cursor: pointer; border-radius: 6px; transition: all 0.2s;
         }
         .auth-tab.active { background: var(--bg-accent); color: #fff; }
 
         .input-group { margin-bottom: 16px; text-align: left; }
         .input-group label { display: block; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .input-group input {
+        .input-group input, .input-group select {
             width: 100%; padding: 12px 16px; background: var(--bg-primary); border: 1px solid var(--border-color);
             border-radius: 8px; color: var(--text-main); font-size: 0.95rem; outline: none; transition: border 0.3s;
         }
-        .input-group input:focus { border-color: var(--green-glow); }
+        .input-group input:focus, .input-group select:focus { border-color: var(--green-glow); }
 
         .btn-submit {
             width: 100%; padding: 14px; background: var(--green-glow); color: #000; border: none;
             border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; margin-top: 8px;
         }
+        .btn-submit.investor-btn { background: var(--blue-accent); color: #fff; }
+        .btn-submit.vendor-btn { background: var(--purple-accent); color: #fff; }
         .btn-submit:hover { opacity: 0.9; }
         .btn-submit:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; opacity: 0.6; }
 
         .demo-accounts {
             margin-top: 20px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color);
-            border-radius: 8px; font-size: 0.8rem; color: var(--text-muted); text-align: left; line-height: 1.6;
+            border-radius: 8px; font-size: 0.78rem; color: var(--text-muted); text-align: left; line-height: 1.6;
         }
         .demo-accounts code { color: var(--gold-accent); font-weight: 600; }
 
-        /* Dashboard App Interface */
-        #app { display: none; max-width: 1200px; margin: 0 auto; }
+        /* Dashboard Main Layout */
+        #app { display: none; max-width: 1240px; margin: 0 auto; }
 
         header {
             display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;
@@ -98,7 +115,10 @@
         .user-profile { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
         .user-profile h2 { font-size: 1.3rem; color: #fff; font-weight: 600; }
         .user-profile .meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-        .user-profile span.badge { color: var(--green-glow); font-size: 0.85rem; font-weight: 600; }
+        .user-profile span.badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 700; }
+        .badge-grower { background: rgba(16, 185, 129, 0.2); color: var(--green-glow); border: 1px solid var(--green-glow); }
+        .badge-investor { background: rgba(59, 130, 246, 0.2); color: var(--blue-accent); border: 1px solid var(--blue-accent); }
+        .badge-vendor { background: rgba(139, 92, 246, 0.2); color: var(--purple-accent); border: 1px solid var(--purple-accent); }
         .group-tag { background: var(--bg-accent); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; color: var(--gold-accent); border: 1px solid var(--border-color); }
 
         /* Dynamic Banners */
@@ -116,13 +136,11 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 24px; }
 
-        .stat-card {
-            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px;
-        }
-        .stat-card .label { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px; }
-        .stat-card .value { font-size: 2rem; font-weight: 700; color: #fff; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 22px; }
+        .stat-card .label { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; color: #fff; }
         .stat-card .subtext { color: var(--green-glow); font-size: 0.85rem; margin-top: 4px; }
 
         /* FX Ticker Bar */
@@ -134,7 +152,7 @@
         .fx-item .currency { font-size: 0.8rem; color: var(--text-muted); }
         .fx-item .rate { font-size: 1.1rem; font-weight: 600; color: var(--gold-accent); margin-top: 2px; }
 
-        /* Main Grid */
+        /* Main Content Grid */
         .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
         @media(max-width: 900px) { 
             .content-grid { grid-template-columns: 1fr; }
@@ -147,12 +165,13 @@
 
         .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
 
-        /* Payment Form */
-        .payment-form .input-group { margin-bottom: 16px; }
-        .payment-form select {
-            width: 100%; padding: 12px; background: var(--bg-primary); border: 1px solid var(--border-color);
-            border-radius: 8px; color: #fff; outline: none;
+        /* Tabbed Action Panel for Investor Dashboard */
+        .investor-tabs { display: flex; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .investor-tab-btn {
+            background: transparent; border: none; color: var(--text-muted); font-weight: 600; font-size: 0.85rem;
+            cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.2s;
         }
+        .investor-tab-btn.active { background: var(--bg-accent); color: var(--blue-accent); }
 
         /* Ledger Table */
         .ledger-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; overflow-x: auto; }
@@ -165,7 +184,7 @@
 </head>
 <body>
 
-    <!-- LOGIN / REGISTER MODAL -->
+    <!-- AUTHENTICATION OVERLAY -->
     <div id="loginOverlay">
         <div class="login-card">
             <div class="logo-container">
@@ -176,52 +195,137 @@
             </div>
             <div class="subtitle">TONGAAT HULETT ZIMBABWE</div>
 
-            <!-- AUTH MODE SWITCHER -->
+            <!-- MAIN ROLE SELECTOR -->
+            <div class="role-selector">
+                <button id="roleGrowerBtn" class="role-btn active-grower" onclick="switchRole('GROWER')">🌱 Outgrower</button>
+                <button id="roleInvestorBtn" class="role-btn" onclick="switchRole('INVESTOR')">💼 Investor</button>
+                <button id="roleVendorBtn" class="role-btn" onclick="switchRole('VENDOR')">🛍️ Vendor</button>
+            </div>
+
+            <!-- AUTH ACTION SUB-TABS -->
             <div class="auth-tabs">
-                <button id="loginTab" class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
-                <button id="signupTab" class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
-            </div>
-            
-            <!-- LOGIN FORM -->
-            <div id="loginFormSection">
-                <div class="input-group">
-                    <label>Grower Code</label>
-                    <input type="text" id="loginGrowerCode" placeholder="e.g. GW-1001" value="GW-1001">
-                </div>
-                <div class="input-group">
-                    <label>4-Digit PIN</label>
-                    <input type="password" id="loginPin" placeholder="••••" value="1234">
-                </div>
-                <button class="btn-submit" onclick="attemptLogin()">Secure Login</button>
+                <button id="loginSubTab" class="auth-tab active" onclick="switchAuthTab('login')">Account Login</button>
+                <button id="signupSubTab" class="auth-tab" onclick="switchAuthTab('signup')">Register Account</button>
             </div>
 
-            <!-- SIGN UP FORM -->
-            <div id="signupFormSection" style="display: none;">
-                <div class="input-group">
-                    <label>Full Name / Outgrower Name</label>
-                    <input type="text" id="regName" placeholder="e.g. Simbarashe Moyo">
+            <!-- ================= GROWER FORMS ================= -->
+            <div id="growerForms">
+                <!-- Grower Login -->
+                <div id="growerLoginForm">
+                    <div class="input-group">
+                        <label>Grower Code</label>
+                        <input type="text" id="loginGrowerCode" placeholder="e.g. GW-1001" value="GW-1001">
+                    </div>
+                    <div class="input-group">
+                        <label>4-Digit Security PIN</label>
+                        <input type="password" id="loginGrowerPin" placeholder="••••" value="1234">
+                    </div>
+                    <button class="btn-submit" onclick="attemptGrowerLogin()">Authenticate Outgrower</button>
                 </div>
-                <div class="input-group">
-                    <label>4-Digit PIN</label>
-                    <input type="password" id="regPin" maxlength="4" placeholder="••••">
+
+                <!-- Grower Register -->
+                <div id="growerRegisterForm" style="display: none;">
+                    <div class="input-group">
+                        <label>Full Name / Outgrower Name</label>
+                        <input type="text" id="regGrowerName" placeholder="e.g. Simbarashe Moyo">
+                    </div>
+                    <div class="input-group">
+                        <label>4-Digit Security PIN</label>
+                        <input type="password" id="regGrowerPin" maxlength="4" placeholder="••••">
+                    </div>
+                    <div class="input-group">
+                        <label>Delivery Section / Mill Location</label>
+                        <input type="text" id="regGrowerLocation" placeholder="e.g. Hippo Valley Section 2">
+                    </div>
+                    <div class="input-group">
+                        <label>Grower Reserve Group</label>
+                        <input type="text" id="regGrowerGroup" value="The Huletts Sunsweet® Reserve">
+                    </div>
+                    <button class="btn-submit" onclick="attemptGrowerRegister()">Register Grower Account</button>
                 </div>
-                <div class="input-group">
-                    <label>Delivery Section / Mill Location</label>
-                    <input type="text" id="regLocation" placeholder="e.g. Hippo Valley Section 2">
-                </div>
-                <div class="input-group">
-                    <label>Grower Reserve Group</label>
-                    <input type="text" id="regGroup" value="The Huletts Sunsweet® Reserve">
-                </div>
-                <button class="btn-submit" onclick="attemptRegister()">Create Account & Connect DB</button>
             </div>
 
-            <div id="authNotice" style="font-size: 0.85rem; margin-top: 12px;"></div>
+            <!-- ================= INVESTOR FORMS ================= -->
+            <div id="investorForms" style="display: none;">
+                <!-- Investor Login -->
+                <div id="investorLoginForm">
+                    <div class="input-group">
+                        <label>Investor Email Address</label>
+                        <input type="email" id="loginInvestorEmail" placeholder="investor@tati.com" value="investor@tati.com">
+                    </div>
+                    <div class="input-group">
+                        <label>4-Digit Access PIN</label>
+                        <input type="password" id="loginInvestorPin" placeholder="••••" value="1234">
+                    </div>
+                    <button class="btn-submit investor-btn" onclick="attemptInvestorLogin()">Access Investor Terminal</button>
+                </div>
+
+                <!-- Investor Register -->
+                <div id="investorRegisterForm" style="display: none;">
+                    <div class="input-group">
+                        <label>Full Name / Institutional Entity</label>
+                        <input type="text" id="regInvestorName" placeholder="e.g. Lowveld Capital Ltd">
+                    </div>
+                    <div class="input-group">
+                        <label>Corporate / Private Email</label>
+                        <input type="email" id="regInvestorEmail" placeholder="e.g. fund@lowveld.com">
+                    </div>
+                    <div class="input-group">
+                        <label>4-Digit Access PIN</label>
+                        <input type="password" id="regInvestorPin" maxlength="4" placeholder="••••">
+                    </div>
+                    <button class="btn-submit investor-btn" onclick="attemptInvestorRegister()">Create Investor Profile</button>
+                </div>
+            </div>
+
+            <!-- ================= VENDOR FORMS ================= -->
+            <div id="vendorForms" style="display: none;">
+                <!-- Vendor Login -->
+                <div id="vendorLoginForm">
+                    <div class="input-group">
+                        <label>Vendor Email Address</label>
+                        <input type="email" id="loginVendorEmail" placeholder="fertilizer@lowveld.co.zw" value="fertilizer@lowveld.co.zw">
+                    </div>
+                    <div class="input-group">
+                        <label>4-Digit Security PIN</label>
+                        <input type="password" id="loginVendorPin" placeholder="••••" value="1234">
+                    </div>
+                    <button class="btn-submit vendor-btn" onclick="attemptVendorLogin()">Vendor Login</button>
+                </div>
+
+                <!-- Vendor Register -->
+                <div id="vendorRegisterForm" style="display: none;">
+                    <div class="input-group">
+                        <label>Business / Merchant Name</label>
+                        <input type="text" id="regVendorName" placeholder="e.g. Chiredzi Farm Equipment">
+                    </div>
+                    <div class="input-group">
+                        <label>Business Email</label>
+                        <input type="email" id="regVendorEmail" placeholder="e.g. sales@chiredzifarm.co.zw">
+                    </div>
+                    <div class="input-group">
+                        <label>Category</label>
+                        <input type="text" id="regVendorCategory" placeholder="e.g. Fertilizers & Fuel">
+                    </div>
+                    <div class="input-group">
+                        <label>Settlement Account Details (EcoCash / Bank)</label>
+                        <input type="text" id="regVendorAccount" placeholder="e.g. EcoCash Merchant: 778123">
+                    </div>
+                    <div class="input-group">
+                        <label>4-Digit Security PIN</label>
+                        <input type="password" id="regVendorPin" maxlength="4" placeholder="••••">
+                    </div>
+                    <button class="btn-submit vendor-btn" onclick="attemptVendorRegister()">Register Vendor Account</button>
+                </div>
+            </div>
+
+            <div id="authNotice" style="font-size: 0.85rem; margin-top: 12px; min-height: 20px;"></div>
 
             <div class="demo-accounts" id="demoAccountsBox">
-                💡 <strong>Demo Accounts:</strong><br>
-                • <code>GW-1001</code> / PIN <code>1234</code> → Tatenda Nyoni<br>
-                • <code>GW-1002</code> / PIN <code>5678</code> → Runyararo Tongogara
+                💡 <strong>Demo Credentials:</strong><br>
+                • <strong>Grower:</strong> <code>GW-1001</code> / PIN <code>1234</code><br>
+                • <strong>Investor:</strong> <code>investor@tati.com</code> / PIN <code>1234</code><br>
+                • <strong>Vendor:</strong> <code>fertilizer@lowveld.co.zw</code> / PIN <code>1234</code>
             </div>
         </div>
     </div>
@@ -240,15 +344,15 @@
             </div>
 
             <div class="user-profile">
-                <h2 id="farmerName">Loading...</h2>
+                <h2 id="userDisplayName">Loading Profile...</h2>
                 <div class="meta">
-                    <span class="badge" id="growerCodeBadge">GW-XXXX</span>
-                    <span class="group-tag" id="farmerGroup">The Huletts Sunsweet® Reserve</span>
+                    <span id="userBadge" class="badge badge-grower">GROWER</span>
+                    <span id="userSubMeta" class="group-tag">The Huletts Sunsweet® Reserve</span>
                 </div>
             </div>
 
             <div>
-                <button class="btn-submit" style="padding: 8px 16px; font-size: 0.85rem; margin-top: 0;" onclick="location.reload()">Logout</button>
+                <button class="btn-submit" style="padding: 8px 16px; font-size: 0.85rem; margin-top: 0; background: var(--bg-accent); color: #fff;" onclick="location.reload()">Logout</button>
             </div>
         </header>
 
@@ -262,25 +366,6 @@
             <span id="maintenanceText">🛠️ <strong>SYSTEM MAINTENANCE ACTIVE:</strong> Spot price reached original baseline floor.</span>
         </div>
 
-        <!-- STATS OVERVIEW -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">Liquidity Balance</div>
-                <div class="value" id="tatiBalance">0.00 TATI</div>
-                <div class="subtext">1 TATI = 1 Tonne Sugarcane</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Estimated USD Floor Value</div>
-                <div class="value" id="usdValuation">$0.00 USD</div>
-                <div class="subtext" id="spotRateText">Spot: $85.00 / Tonne</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Mill Delivery Location</div>
-                <div class="value" style="font-size: 1.3rem;" id="millLocation">Triangle Mill Section 4</div>
-                <div class="subtext">Verified Reserve Outgrower</div>
-            </div>
-        </div>
-
         <!-- FX TICKER BAR -->
         <div class="fx-bar">
             <div class="fx-item"><div class="currency">1 TATI → USD</div><div class="rate" id="fxUSD">$85.00</div></div>
@@ -290,316 +375,809 @@
             <div class="fx-item"><div class="currency">1 TATI → ZWG</div><div class="rate" id="fxZWG">2,278.00 ZWG</div></div>
         </div>
 
-        <!-- CONTENT GRID -->
-        <div class="content-grid">
-            <div class="chart-box">
-                <div class="section-title">
-                    <span>📈 TATI Spot Valuation Stream</span>
-                    <small id="marketStatusIndicator" style="color: var(--green-glow); font-size: 0.8rem;">● Live Reserve Desk</small>
+        <!-- ================================================================= -->
+        <!-- GROWER DASHBOARD VIEW                                             -->
+        <!-- ================================================================= -->
+        <div id="growerDashboard" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">Liquidity Balance</div>
+                    <div class="value" id="growerTatiBalance">0.00 TATI</div>
+                    <div class="subtext">1 TATI = 1 Tonne Sugarcane</div>
                 </div>
-                <canvas id="priceChart" height="140"></canvas>
+                <div class="stat-card">
+                    <div class="label">Estimated USD Floor Value</div>
+                    <div class="value" id="growerUsdValuation">$0.00 USD</div>
+                    <div class="subtext" id="growerSpotRateText">Spot: $85.00 / Tonne</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Mill Delivery Location</div>
+                    <div class="value" style="font-size: 1.3rem;" id="growerLocation">Triangle Mill Section 4</div>
+                    <div class="subtext">Verified Reserve Outgrower</div>
+                </div>
             </div>
 
-            <div class="action-box">
-                <div class="section-title">💸 Wire / Pay Vendor</div>
-                <div class="payment-form">
-                    <div class="input-group">
-                        <label>Recipient Vendor / Account</label>
-                        <input type="text" id="payRecipient" placeholder="e.g. Lowveld Fertilizer Co">
+            <div class="content-grid">
+                <div class="chart-box">
+                    <div class="section-title">
+                        <span>📈 TATI Spot Valuation Stream</span>
+                        <small id="marketStatusIndicator" style="color: var(--green-glow); font-size: 0.8rem;">● Live Reserve Desk</small>
                     </div>
-                    <div class="input-group">
-                        <label>Amount in TATI</label>
-                        <input type="number" id="payAmount" placeholder="e.g. 50">
-                    </div>
-                    <div class="input-group">
-                        <label>Target Currency Settlement</label>
-                        <select id="payTargetAsset">
-                            <option value="USD">USD ($)</option>
-                            <option value="ZWG">ZWG</option>
-                            <option value="ZAR">ZAR (R)</option>
-                        </select>
-                    </div>
-                    <button class="btn-submit" id="payButton" onclick="executePayment()">Authorize Transfer</button>
-                    <div id="paymentStatus" style="margin-top: 10px; font-size: 0.85rem; text-align: center;"></div>
+                    <canvas id="growerPriceChart" height="140"></canvas>
                 </div>
+
+                <div class="action-box">
+                    <div class="section-title">💸 Direct Vendor Settlement</div>
+                    <div class="payment-form">
+                        <div class="input-group">
+                            <label>Select Registered Vendor</label>
+                            <select id="payVendorSelect">
+                                <option value="">-- Fetching Vendors... --</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Amount to Pay</label>
+                            <input type="number" id="payAmount" placeholder="e.g. 50">
+                        </div>
+                        <div class="input-group">
+                            <label>Currency Denomination</label>
+                            <select id="payCurrency">
+                                <option value="USD">USD ($)</option>
+                                <option value="TATI">TATI Token</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Payment Note / Description</label>
+                            <input type="text" id="payNote" placeholder="e.g. Purchase 500kg Fertilizer">
+                        </div>
+                        <button class="btn-submit" id="payButton" onclick="executeGrowerPayment()">Authorize & Pay Vendor</button>
+                        <div id="growerPayStatus" style="margin-top: 10px; font-size: 0.85rem; text-align: center;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GROWER LEDGER -->
+            <div class="ledger-box">
+                <div class="section-title">🧾 Private Gatepass & Transaction Ledger</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Reference ID</th>
+                            <th>Transaction Type</th>
+                            <th>Description</th>
+                            <th>TATI Mint / Debit</th>
+                            <th>Valuation</th>
+                        </tr>
+                    </thead>
+                    <tbody id="growerLedgerBody">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No records found.</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- LEDGER TABLE -->
-        <div class="ledger-box">
-            <div class="section-title">🧾 Private Gatepass & Transaction Ledger</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Reference ID</th>
-                        <th>Transaction Type</th>
-                        <th>Mass / Description</th>
-                        <th>TATI Mint / Debit</th>
-                        <th>Valuation</th>
-                    </tr>
-                </thead>
-                <tbody id="ledgerBody">
-                    <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No records found.</td></tr>
-                </tbody>
-            </table>
+        <!-- ================================================================= -->
+        <!-- INVESTOR DASHBOARD VIEW                                           -->
+        <!-- ================================================================= -->
+        <div id="investorDashboard" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">USD Treasury Vault Balance</div>
+                    <div class="value" id="investorUsdBalance">$0.00 USD</div>
+                    <div class="subtext" style="color: var(--blue-accent);">Liquid Cash Capital</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">TATI Sugarcane Asset Balance</div>
+                    <div class="value" id="investorTatiBalance">0.00 TATI</div>
+                    <div class="subtext">1 TATI = 1 Tonne Backing</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Total Combined Portfolio Value</div>
+                    <div class="value" id="investorPortfolioValuation">$0.00 USD</div>
+                    <div class="subtext" id="investorSpotRateText">Spot Rate: $85.00 / TATI</div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <div class="chart-box">
+                    <div class="section-title">
+                        <span>📈 TATI Spot Valuation Stream</span>
+                        <small style="color: var(--blue-accent); font-size: 0.8rem;">● Investor Liquidity Engine</small>
+                    </div>
+                    <canvas id="investorPriceChart" height="140"></canvas>
+                </div>
+
+                <div class="action-box">
+                    <div class="investor-tabs">
+                        <button id="tabBtnTrade" class="investor-tab-btn active" onclick="switchInvestorActionTab('trade')">Spot Trade</button>
+                        <button id="tabBtnDeposit" class="investor-tab-btn" onclick="switchInvestorActionTab('deposit')">Deposit USD</button>
+                        <button id="tabBtnWithdraw" class="investor-tab-btn" onclick="switchInvestorActionTab('withdraw')">Withdraw</button>
+                    </div>
+
+                    <!-- 1. SPOT TRADE PANEL -->
+                    <div id="panelTrade">
+                        <div class="input-group">
+                            <label>Action</label>
+                            <select id="tradeAction" onchange="calculateTradeEst()">
+                                <option value="BUY">BUY TATI (Spend USD)</option>
+                                <option value="SELL">SELL TATI (Receive USD)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>TATI Quantity</label>
+                            <input type="number" id="tradeQuantity" placeholder="e.g. 100" oninput="calculateTradeEst()">
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--gold-accent); margin-bottom: 12px;" id="tradeEstimateText">Est. USD Value: $0.00 USD</div>
+                        <button class="btn-submit investor-btn" onclick="executeInvestorTrade()">Execute Order</button>
+                    </div>
+
+                    <!-- 2. PAYMENT GATEWAY DEPOSIT PANEL -->
+                    <div id="panelDeposit" style="display: none;">
+                        <div class="input-group">
+                            <label>Amount in USD ($)</label>
+                            <input type="number" id="depositAmountUsd" placeholder="e.g. 5000">
+                        </div>
+                        <div class="input-group">
+                            <label>Payment Gateway / Channel</label>
+                            <select id="depositGateway">
+                                <option value="Stripe Payment Gateway">Stripe Payment Gateway</option>
+                                <option value="Paynow Zimbabwe">Paynow Online Gateway</option>
+                                <option value="EcoCash Direct Wallet">EcoCash Mobile Direct</option>
+                                <option value="Visa / Mastercard Direct">Visa / Mastercard Direct</option>
+                            </select>
+                        </div>
+                        <button class="btn-submit investor-btn" onclick="executeInvestorDeposit()">Process Gateway Deposit</button>
+                    </div>
+
+                    <!-- 3. WITHDRAWAL PANEL -->
+                    <div id="panelWithdraw" style="display: none;">
+                        <div class="input-group">
+                            <label>Amount in USD ($)</label>
+                            <input type="number" id="withdrawAmountUsd" placeholder="e.g. 1000">
+                        </div>
+                        <div class="input-group">
+                            <label>Payout Channel</label>
+                            <select id="withdrawChannel">
+                                <option value="Bank Wire Transfer">Bank Wire Transfer</option>
+                                <option value="International Nostro Account">Nostro Account Settlement</option>
+                                <option value="EcoCash USD Merchant">EcoCash USD Merchant</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Destination Account / IBAN</label>
+                            <input type="text" id="withdrawAccount" placeholder="e.g. ZIMB-9988-2201">
+                        </div>
+                        <button class="btn-submit investor-btn" onclick="executeInvestorWithdrawal()">Authorize Withdrawal</button>
+                    </div>
+
+                    <div id="investorActionStatus" style="margin-top: 12px; font-size: 0.85rem; text-align: center;"></div>
+                </div>
+            </div>
+
+            <!-- INVESTOR LEDGER -->
+            <div class="ledger-box">
+                <div class="section-title">🧾 Institutional Portfolio Transaction Ledger</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Reference ID</th>
+                            <th>Type</th>
+                            <th>Payment Gateway / Channel</th>
+                            <th>USD Amount</th>
+                            <th>TATI Volume</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="investorLedgerBody">
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No transactions recorded.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
+        <!-- ================================================================= -->
+        <!-- VENDOR DASHBOARD VIEW                                             -->
+        <!-- ================================================================= -->
+        <div id="vendorDashboard" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">TATI Revenue Balance</div>
+                    <div class="value" id="vendorTatiBalance">0.00 TATI</div>
+                    <div class="subtext" style="color: var(--purple-accent);">Received Outgrower Payments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Settled USD Revenue</div>
+                    <div class="value" id="vendorUsdBalance">$0.00 USD</div>
+                    <div class="subtext">Available Cash Reserve</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Settlement Channel</div>
+                    <div class="value" style="font-size: 1.1rem; color: var(--gold-accent);" id="vendorSettlementAccount">EcoCash Merchant</div>
+                    <div class="subtext" id="vendorCategoryTag">Agricultural Inputs</div>
+                </div>
+            </div>
+
+            <!-- VENDOR LEDGER -->
+            <div class="ledger-box">
+                <div class="section-title">🧾 Vendor Payment Receipts & Settlement Ledger</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Ref ID</th>
+                            <th>Payer / Outgrower</th>
+                            <th>Item Description</th>
+                            <th>Amount Paid</th>
+                            <th>Currency</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendorLedgerBody">
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No vendor receipts found.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
+    <!-- MAIN JAVASCRIPT LOGIC -->
     <script>
-        const socket = io();
-        let currentFarmer = null;
-        let priceChart = null;
+        // Real-time Socket.io initialization (with graceful offline/standalone fallback)
+        let socket;
+        try {
+            socket = io();
+        } catch (e) {
+            console.warn("Socket.io server offline. Operating in standalone demo mode.");
+        }
 
-        function switchAuthTab(mode) {
-            const loginForm = document.getElementById('loginFormSection');
-            const signupForm = document.getElementById('signupFormSection');
-            const loginTab = document.getElementById('loginTab');
-            const signupTab = document.getElementById('signupTab');
-            const notice = document.getElementById('authNotice');
+        // Core App State
+        let currentRole = 'GROWER';
+        let currentAuthTab = 'login';
+        let currentUser = null;
+        let currentSpotPrice = 85.00;
+        let growerChart = null;
+        let investorChart = null;
 
-            notice.innerText = '';
+        const priceHistory = [84.20, 84.50, 84.80, 85.00, 85.10, 85.00];
+        const timeLabels = ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'];
 
-            if (mode === 'signup') {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'block';
-                loginTab.classList.remove('active');
-                signupTab.classList.add('active');
-            } else {
-                signupForm.style.display = 'none';
-                loginForm.style.display = 'block';
-                signupTab.classList.remove('active');
-                loginTab.classList.add('active');
+        // Demo Mock Database for Instant Testing
+        const mockUsers = {
+            GROWER: {
+                code: 'GW-1001', pin: '1234', name: 'Simbarashe Moyo', role: 'GROWER',
+                group: 'The Huletts Sunsweet® Reserve', location: 'Triangle Mill Section 4',
+                tatiBalance: 120.50, ledger: [
+                    { time: '10:00 AM', ref: 'TX-8821', type: 'MINT', desc: 'Sugarcane Delivery Deposit', tati: '+120.50', usd: '$10,242.50' }
+                ]
+            },
+            INVESTOR: {
+                email: 'investor@tati.com', pin: '1234', name: 'Lowveld Capital Ltd', role: 'INVESTOR',
+                group: 'Institutional Investor Desk', usdBalance: 50000.00, tatiBalance: 250.00, ledger: [
+                    { time: '09:30 AM', ref: 'INV-3091', type: 'BUY', gateway: 'Stripe Payment Gateway', usd: '-$8,500.00', tati: '+100.00 TATI', status: 'Completed' }
+                ]
+            },
+            VENDOR: {
+                email: 'fertilizer@lowveld.co.zw', pin: '1234', name: 'Lowveld Agrochemicals Ltd', role: 'VENDOR',
+                category: 'Fertilizers & Fuel', account: 'EcoCash Merchant: 778123', tatiBalance: 45.00, usdBalance: 1250.00, ledger: [
+                    { time: '08:45 AM', ref: 'VEN-1102', payer: 'GW-1001 (S. Moyo)', desc: '500kg Urea Fertilizer', amount: '45.00', currency: 'TATI', status: 'Settled' }
+                ]
+            }
+        };
+
+        const mockVendors = [
+            { id: 'V1', name: 'Lowveld Agrochemicals Ltd (Fertilizer/Fuel)' },
+            { id: 'V2', name: 'Chiredzi Tractor & Farm Equipment' },
+            { id: 'V3', name: 'Hippo Valley Irrigation Supplies' }
+        ];
+
+        // --- ROLE & TAB SWITCHING ---
+        function switchRole(role) {
+            currentRole = role;
+            const growerBtn = document.getElementById('roleGrowerBtn');
+            const investorBtn = document.getElementById('roleInvestorBtn');
+            const vendorBtn = document.getElementById('roleVendorBtn');
+
+            growerBtn.className = 'role-btn';
+            investorBtn.className = 'role-btn';
+            vendorBtn.className = 'role-btn';
+
+            document.getElementById('growerForms').style.display = 'none';
+            document.getElementById('investorForms').style.display = 'none';
+            document.getElementById('vendorForms').style.display = 'none';
+
+            if (role === 'GROWER') {
+                growerBtn.classList.add('active-grower');
+                document.getElementById('growerForms').style.display = 'block';
+            } else if (role === 'INVESTOR') {
+                investorBtn.classList.add('active-investor');
+                document.getElementById('investorForms').style.display = 'block';
+            } else if (role === 'VENDOR') {
+                vendorBtn.classList.add('active-vendor');
+                document.getElementById('vendorForms').style.display = 'block';
             }
         }
 
-        function initChart() {
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            priceChart = new Chart(ctx, {
+        function switchAuthTab(tab) {
+            currentAuthTab = tab;
+            document.getElementById('loginSubTab').classList.toggle('active', tab === 'login');
+            document.getElementById('signupSubTab').classList.toggle('active', tab === 'signup');
+
+            document.getElementById('growerLoginForm').style.display = (currentRole === 'GROWER' && tab === 'login') ? 'block' : 'none';
+            document.getElementById('growerRegisterForm').style.display = (currentRole === 'GROWER' && tab === 'signup') ? 'block' : 'none';
+
+            document.getElementById('investorLoginForm').style.display = (currentRole === 'INVESTOR' && tab === 'login') ? 'block' : 'none';
+            document.getElementById('investorRegisterForm').style.display = (currentRole === 'INVESTOR' && tab === 'signup') ? 'block' : 'none';
+
+            document.getElementById('vendorLoginForm').style.display = (currentRole === 'VENDOR' && tab === 'login') ? 'block' : 'none';
+            document.getElementById('vendorRegisterForm').style.display = (currentRole === 'VENDOR' && tab === 'signup') ? 'block' : 'none';
+        }
+
+        function switchInvestorActionTab(tab) {
+            document.querySelectorAll('.investor-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('panelTrade').style.display = 'none';
+            document.getElementById('panelDeposit').style.display = 'none';
+            document.getElementById('panelWithdraw').style.display = 'none';
+
+            if (tab === 'trade') {
+                document.getElementById('tabBtnTrade').classList.add('active');
+                document.getElementById('panelTrade').style.display = 'block';
+            } else if (tab === 'deposit') {
+                document.getElementById('tabBtnDeposit').classList.add('active');
+                document.getElementById('panelDeposit').style.display = 'block';
+            } else if (tab === 'withdraw') {
+                document.getElementById('tabBtnWithdraw').classList.add('active');
+                document.getElementById('panelWithdraw').style.display = 'block';
+            }
+        }
+
+        // --- AUTHENTICATION ATTEMPTS ---
+        function attemptGrowerLogin() {
+            const code = document.getElementById('loginGrowerCode').value.trim();
+            const pin = document.getElementById('loginGrowerPin').value.trim();
+
+            if (code === mockUsers.GROWER.code && pin === mockUsers.GROWER.pin) {
+                currentUser = mockUsers.GROWER;
+                launchDashboard();
+            } else {
+                showNotice("Invalid Grower Code or PIN. Use demo credentials GW-1001 / 1234", "red");
+            }
+        }
+
+        function attemptGrowerRegister() {
+            const name = document.getElementById('regGrowerName').value.trim();
+            const pin = document.getElementById('regGrowerPin').value.trim();
+            const loc = document.getElementById('regGrowerLocation').value.trim();
+
+            if (!name || pin.length !== 4) {
+                showNotice("Please fill in a valid name and 4-digit PIN.", "red");
+                return;
+            }
+
+            currentUser = {
+                code: 'GW-' + Math.floor(1000 + Math.random() * 9000),
+                pin: pin, name: name, role: 'GROWER',
+                group: 'The Huletts Sunsweet® Reserve', location: loc || 'Triangle Mill Section 1',
+                tatiBalance: 0.00, ledger: []
+            };
+            launchDashboard();
+        }
+
+        function attemptInvestorLogin() {
+            const email = document.getElementById('loginInvestorEmail').value.trim();
+            const pin = document.getElementById('loginInvestorPin').value.trim();
+
+            if (email === mockUsers.INVESTOR.email && pin === mockUsers.INVESTOR.pin) {
+                currentUser = mockUsers.INVESTOR;
+                launchDashboard();
+            } else {
+                showNotice("Invalid Investor Email or PIN. Use investor@tati.com / 1234", "red");
+            }
+        }
+
+        function attemptInvestorRegister() {
+            const name = document.getElementById('regInvestorName').value.trim();
+            const email = document.getElementById('regInvestorEmail').value.trim();
+            const pin = document.getElementById('regInvestorPin').value.trim();
+
+            if (!name || !email || pin.length !== 4) {
+                showNotice("Please complete all fields with a valid 4-digit PIN.", "red");
+                return;
+            }
+
+            currentUser = {
+                email: email, pin: pin, name: name, role: 'INVESTOR',
+                group: 'Institutional Desk', usdBalance: 10000.00, tatiBalance: 0.00, ledger: []
+            };
+            launchDashboard();
+        }
+
+        function attemptVendorLogin() {
+            const email = document.getElementById('loginVendorEmail').value.trim();
+            const pin = document.getElementById('loginVendorPin').value.trim();
+
+            if (email === mockUsers.VENDOR.email && pin === mockUsers.VENDOR.pin) {
+                currentUser = mockUsers.VENDOR;
+                launchDashboard();
+            } else {
+                showNotice("Invalid Vendor Email or PIN. Use fertilizer@lowveld.co.zw / 1234", "red");
+            }
+        }
+
+        function attemptVendorRegister() {
+            const name = document.getElementById('regVendorName').value.trim();
+            const email = document.getElementById('regVendorEmail').value.trim();
+            const category = document.getElementById('regVendorCategory').value.trim();
+            const account = document.getElementById('regVendorAccount').value.trim();
+            const pin = document.getElementById('regVendorPin').value.trim();
+
+            if (!name || !email || pin.length !== 4) {
+                showNotice("Please fill all required vendor details.", "red");
+                return;
+            }
+
+            currentUser = {
+                email: email, pin: pin, name: name, role: 'VENDOR',
+                category: category || 'General Supplies', account: account || 'EcoCash Direct',
+                tatiBalance: 0.00, usdBalance: 0.00, ledger: []
+            };
+            launchDashboard();
+        }
+
+        function showNotice(msg, color) {
+            const notice = document.getElementById('authNotice');
+            notice.style.color = color === 'red' ? 'var(--red-alert)' : 'var(--green-glow)';
+            notice.innerText = msg;
+        }
+
+        // --- LAUNCH DASHBOARD ---
+        function launchDashboard() {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+
+            // Populate User Badge Header
+            document.getElementById('userDisplayName').innerText = currentUser.name;
+            const badge = document.getElementById('userBadge');
+            badge.innerText = currentUser.role;
+            badge.className = `badge badge-${currentUser.role.toLowerCase()}`;
+            document.getElementById('userSubMeta').innerText = currentUser.group || currentUser.category || 'TATI Reserve Network';
+
+            // Show appropriate dashboard view
+            document.getElementById('growerDashboard').style.display = currentUser.role === 'GROWER' ? 'block' : 'none';
+            document.getElementById('investorDashboard').style.display = currentUser.role === 'INVESTOR' ? 'block' : 'none';
+            document.getElementById('vendorDashboard').style.display = currentUser.role === 'VENDOR' ? 'block' : 'none';
+
+            if (currentUser.role === 'GROWER') {
+                populateVendorDropdown();
+            }
+
+            initCharts();
+            updateUIBalances();
+            renderLedger();
+        }
+
+        // --- VENDOR DROPDOWN FETCH ---
+        function populateVendorDropdown() {
+            const select = document.getElementById('payVendorSelect');
+            select.innerHTML = '<option value="">-- Choose Vendor --</option>';
+            mockVendors.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.innerText = v.name;
+                select.appendChild(opt);
+            });
+        }
+
+        // --- UI & BALANCE CALCULATIONS ---
+        function updateUIBalances() {
+            if (!currentUser) return;
+
+            // Update Foreign Exchange Bar
+            document.getElementById('fxUSD').innerText = `$${currentSpotPrice.toFixed(2)}`;
+            document.getElementById('fxEUR').innerText = `€${(currentSpotPrice * 0.92).toFixed(2)}`;
+            document.getElementById('fxGBP').innerText = `£${(currentSpotPrice * 0.78).toFixed(2)}`;
+            document.getElementById('fxZAR').innerText = `R${(currentSpotPrice * 18.2).toFixed(2)}`;
+            document.getElementById('fxZWG').innerText = `${(currentSpotPrice * 26.8).toFixed(2)} ZWG`;
+
+            if (currentUser.role === 'GROWER') {
+                document.getElementById('growerTatiBalance').innerText = `${currentUser.tatiBalance.toFixed(2)} TATI`;
+                const usdValue = currentUser.tatiBalance * currentSpotPrice;
+                document.getElementById('growerUsdValuation').innerText = `$${usdValue.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+                document.getElementById('growerSpotRateText').innerText = `Spot: $${currentSpotPrice.toFixed(2)} / Tonne`;
+                document.getElementById('growerLocation').innerText = currentUser.location || 'Triangle Mill Section 4';
+            } 
+            else if (currentUser.role === 'INVESTOR') {
+                document.getElementById('investorUsdBalance').innerText = `$${currentUser.usdBalance.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+                document.getElementById('investorTatiBalance').innerText = `${currentUser.tatiBalance.toFixed(2)} TATI`;
+                const totalVal = currentUser.usdBalance + (currentUser.tatiBalance * currentSpotPrice);
+                document.getElementById('investorPortfolioValuation').innerText = `$${totalVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+                document.getElementById('investorSpotRateText').innerText = `Spot Rate: $${currentSpotPrice.toFixed(2)} / TATI`;
+                calculateTradeEst();
+            } 
+            else if (currentUser.role === 'VENDOR') {
+                document.getElementById('vendorTatiBalance').innerText = `${currentUser.tatiBalance.toFixed(2)} TATI`;
+                document.getElementById('vendorUsdBalance').innerText = `$${currentUser.usdBalance.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+                document.getElementById('vendorSettlementAccount').innerText = currentUser.account || 'EcoCash Merchant';
+                document.getElementById('vendorCategoryTag').innerText = currentUser.category || 'Agricultural Inputs';
+            }
+        }
+
+        function calculateTradeEst() {
+            const qty = parseFloat(document.getElementById('tradeQuantity').value) || 0;
+            const est = qty * currentSpotPrice;
+            document.getElementById('tradeEstimateText').innerText = `Est. USD Value: $${est.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        }
+
+        // --- TRANSACTION EXECUTIONS ---
+        function executeGrowerPayment() {
+            const vendor = document.getElementById('payVendorSelect').value;
+            const amount = parseFloat(document.getElementById('payAmount').value);
+            const currency = document.getElementById('payCurrency').value;
+            const note = document.getElementById('payNote').value || 'Vendor Purchase';
+            const statusBox = document.getElementById('growerPayStatus');
+
+            if (!vendor || isNaN(amount) || amount <= 0) {
+                statusBox.style.color = 'var(--red-alert)';
+                statusBox.innerText = 'Please select a vendor and enter a valid payment amount.';
+                return;
+            }
+
+            let tatiDeduction = currency === 'TATI' ? amount : amount / currentSpotPrice;
+
+            if (currentUser.tatiBalance < tatiDeduction) {
+                statusBox.style.color = 'var(--red-alert)';
+                statusBox.innerText = 'Insufficient TATI sugarcane balance.';
+                return;
+            }
+
+            currentUser.tatiBalance -= tatiDeduction;
+            const ref = 'TX-' + Math.floor(1000 + Math.random() * 9000);
+            currentUser.ledger.unshift({
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                ref: ref, type: 'PAYMENT', desc: `${note} (${vendor})`,
+                tati: `-${tatiDeduction.toFixed(2)}`, usd: `$${(tatiDeduction * currentSpotPrice).toFixed(2)}`
+            });
+
+            statusBox.style.color = 'var(--green-glow)';
+            statusBox.innerText = `Successfully paid ${vendor} ${amount} ${currency}!`;
+            document.getElementById('payAmount').value = '';
+            
+            updateUIBalances();
+            renderLedger();
+        }
+
+        function executeInvestorTrade() {
+            const action = document.getElementById('tradeAction').value;
+            const qty = parseFloat(document.getElementById('tradeQuantity').value);
+            const statusBox = document.getElementById('investorActionStatus');
+
+            if (isNaN(qty) || qty <= 0) {
+                statusBox.style.color = 'var(--red-alert)';
+                statusBox.innerText = 'Enter a valid TATI quantity to trade.';
+                return;
+            }
+
+            const costUsd = qty * currentSpotPrice;
+
+            if (action === 'BUY') {
+                if (currentUser.usdBalance < costUsd) {
+                    statusBox.style.color = 'var(--red-alert)';
+                    statusBox.innerText = 'Insufficient USD Treasury balance.';
+                    return;
+                }
+                currentUser.usdBalance -= costUsd;
+                currentUser.tatiBalance += qty;
+            } else {
+                if (currentUser.tatiBalance < qty) {
+                    statusBox.style.color = 'var(--red-alert)';
+                    statusBox.innerText = 'Insufficient TATI token balance to sell.';
+                    return;
+                }
+                currentUser.tatiBalance -= qty;
+                currentUser.usdBalance += costUsd;
+            }
+
+            const ref = 'INV-' + Math.floor(1000 + Math.random() * 9000);
+            currentUser.ledger.unshift({
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                ref: ref, type: action, gateway: 'Spot Market Execution',
+                usd: action === 'BUY' ? `-$${costUsd.toFixed(2)}` : `+$${costUsd.toFixed(2)}`,
+                tati: action === 'BUY' ? `+${qty.toFixed(2)} TATI` : `-${qty.toFixed(2)} TATI`,
+                status: 'Completed'
+            });
+
+            statusBox.style.color = 'var(--green-glow)';
+            statusBox.innerText = `Trade executed successfully! ${action} ${qty} TATI`;
+            document.getElementById('tradeQuantity').value = '';
+
+            updateUIBalances();
+            renderLedger();
+        }
+
+        function executeInvestorDeposit() {
+            const amount = parseFloat(document.getElementById('depositAmountUsd').value);
+            const gateway = document.getElementById('depositGateway').value;
+            const statusBox = document.getElementById('investorActionStatus');
+
+            if (isNaN(amount) || amount <= 0) {
+                statusBox.style.color = 'var(--red-alert)';
+                statusBox.innerText = 'Enter a valid deposit amount.';
+                return;
+            }
+
+            currentUser.usdBalance += amount;
+            const ref = 'DEP-' + Math.floor(1000 + Math.random() * 9000);
+            currentUser.ledger.unshift({
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                ref: ref, type: 'DEPOSIT', gateway: gateway,
+                usd: `+$${amount.toFixed(2)}`, tati: '0.00 TATI', status: 'Completed'
+            });
+
+            statusBox.style.color = 'var(--green-glow)';
+            statusBox.innerText = `Deposited $${amount.toFixed(2)} via ${gateway}`;
+            document.getElementById('depositAmountUsd').value = '';
+
+            updateUIBalances();
+            renderLedger();
+        }
+
+        function executeInvestorWithdrawal() {
+            const amount = parseFloat(document.getElementById('withdrawAmountUsd').value);
+            const channel = document.getElementById('withdrawChannel').value;
+            const account = document.getElementById('withdrawAccount').value || 'N/A';
+            const statusBox = document.getElementById('investorActionStatus');
+
+            if (isNaN(amount) || amount <= 0 || currentUser.usdBalance < amount) {
+                statusBox.style.color = 'var(--red-alert)';
+                statusBox.innerText = 'Invalid amount or insufficient USD Treasury balance.';
+                return;
+            }
+
+            currentUser.usdBalance -= amount;
+            const ref = 'WTH-' + Math.floor(1000 + Math.random() * 9000);
+            currentUser.ledger.unshift({
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                ref: ref, type: 'WITHDRAW', gateway: `${channel} (${account})`,
+                usd: `-$${amount.toFixed(2)}`, tati: '0.00 TATI', status: 'Processing'
+            });
+
+            statusBox.style.color = 'var(--green-glow)';
+            statusBox.innerText = `Withdrawal of $${amount.toFixed(2)} initiated!`;
+            document.getElementById('withdrawAmountUsd').value = '';
+
+            updateUIBalances();
+            renderLedger();
+        }
+
+        // --- RENDER LEDGERS ---
+        function renderLedger() {
+            if (!currentUser) return;
+
+            if (currentUser.role === 'GROWER') {
+                const tbody = document.getElementById('growerLedgerBody');
+                if (currentUser.ledger.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No records found.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = currentUser.ledger.map(row => `
+                    <tr>
+                        <td>${row.time}</td>
+                        <td><code>${row.ref}</code></td>
+                        <td>${row.type}</td>
+                        <td>${row.desc}</td>
+                        <td class="${row.tati.startsWith('+') ? 'credit' : 'debit'}">${row.tati}</td>
+                        <td>${row.usd}</td>
+                    </tr>
+                `).join('');
+            } 
+            else if (currentUser.role === 'INVESTOR') {
+                const tbody = document.getElementById('investorLedgerBody');
+                if (currentUser.ledger.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No transactions recorded.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = currentUser.ledger.map(row => `
+                    <tr>
+                        <td>${row.time}</td>
+                        <td><code>${row.ref}</code></td>
+                        <td>${row.type}</td>
+                        <td>${row.gateway}</td>
+                        <td class="${row.usd.startsWith('+') ? 'credit' : 'debit'}">${row.usd}</td>
+                        <td>${row.tati}</td>
+                        <td><span style="color: var(--green-glow);">${row.status}</span></td>
+                    </tr>
+                `).join('');
+            } 
+            else if (currentUser.role === 'VENDOR') {
+                const tbody = document.getElementById('vendorLedgerBody');
+                if (currentUser.ledger.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No vendor receipts found.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = currentUser.ledger.map(row => `
+                    <tr>
+                        <td>${row.time}</td>
+                        <td><code>${row.ref}</code></td>
+                        <td>${row.payer}</td>
+                        <td>${row.desc}</td>
+                        <td class="credit">+${row.amount}</td>
+                        <td>${row.currency}</td>
+                        <td><span style="color: var(--purple-accent);">${row.status}</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // --- CHART INITIALIZATION ---
+        function initCharts() {
+            const chartConfig = (labelColor) => ({
                 type: 'line',
                 data: {
-                    labels: [],
+                    labels: timeLabels,
                     datasets: [{
-                        label: 'TATI Valuation ($ USD)',
-                        data: [],
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        label: 'TATI Spot Price (USD)',
+                        data: priceHistory,
+                        borderColor: labelColor,
+                        backgroundColor: 'rgba(16, 185, 129, 0.08)',
                         fill: true,
-                        tension: 0.3
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 4
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                        y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                    },
-                    plugins: { legend: { display: false } }
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
+                    }
                 }
             });
+
+            if (currentUser.role === 'GROWER' && !growerChart) {
+                const ctx = document.getElementById('growerPriceChart').getContext('2d');
+                growerChart = new Chart(ctx, chartConfig('#10b981'));
+            } else if (currentUser.role === 'INVESTOR' && !investorChart) {
+                const ctx = document.getElementById('investorPriceChart').getContext('2d');
+                investorChart = new Chart(ctx, chartConfig('#3b82f6'));
+            }
         }
 
-        function attemptLogin() {
-            const growerCode = document.getElementById('loginGrowerCode').value.trim();
-            const pin = document.getElementById('loginPin').value.trim();
-            const notice = document.getElementById('authNotice');
+        // --- SOCKET.IO REALTIME HANDLERS ---
+        if (socket) {
+            socket.on('priceUpdate', (data) => {
+                if (data && data.price) {
+                    currentSpotPrice = data.price;
+                    priceHistory.push(currentSpotPrice);
+                    priceHistory.shift();
+                    timeLabels.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+                    timeLabels.shift();
 
-            if (!growerCode || !pin) {
-                notice.innerText = "Please enter Grower Code and PIN.";
-                notice.style.color = "var(--red-alert)";
-                return;
-            }
+                    if (growerChart) growerChart.update();
+                    if (investorChart) investorChart.update();
 
-            socket.emit('authenticate_farmer', { growerCode, pin });
-        }
-
-        function attemptRegister() {
-            const farmerName = document.getElementById('regName').value.trim();
-            const pin = document.getElementById('regPin').value.trim();
-            const location = document.getElementById('regLocation').value.trim();
-            const farmerGroup = document.getElementById('regGroup').value.trim();
-            const notice = document.getElementById('authNotice');
-
-            if (!farmerName || !pin || pin.length !== 4) {
-                notice.innerText = "Please provide your Full Name and a 4-Digit PIN.";
-                notice.style.color = "var(--red-alert)";
-                return;
-            }
-
-            notice.innerText = "Registering and saving to database...";
-            notice.style.color = "var(--gold-accent)";
-
-            socket.emit('register_farmer', {
-                farmerName,
-                pin,
-                location: location || "Lowveld Region",
-                farmerGroup: farmerGroup || "The Huletts Sunsweet® Reserve"
-            });
-        }
-
-        socket.on('auth_success', (farmer) => {
-            currentFarmer = farmer;
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-
-            document.getElementById('farmerName').innerText = farmer.farmerName;
-            document.getElementById('growerCodeBadge').innerText = farmer.growerCode;
-            document.getElementById('farmerGroup').innerText = farmer.farmerGroup || "The Huletts Sunsweet® Reserve";
-            document.getElementById('millLocation').innerText = farmer.location;
-            
-            updateBalanceUI(farmer.balanceTati);
-            initChart();
-        });
-
-        socket.on('auth_error', (msg) => {
-            const notice = document.getElementById('authNotice');
-            notice.innerText = msg;
-            notice.style.color = "var(--red-alert)";
-        });
-
-        socket.on('balance_update', ({ balanceTati }) => {
-            if (currentFarmer) {
-                currentFarmer.balanceTati = balanceTati;
-                updateBalanceUI(balanceTati);
-            }
-        });
-
-        socket.on('receipt_history', (ledger) => { renderLedger(ledger); });
-        socket.on('new_receipt', (receipt) => {
-            const tbody = document.getElementById('ledgerBody');
-            tbody.insertAdjacentHTML('afterbegin', createLedgerRow(receipt));
-        });
-
-        socket.on('price_history', (history) => {
-            if (priceChart) {
-                priceChart.data.labels = history.map(h => h.time);
-                priceChart.data.datasets[0].data = history.map(h => h.price);
-                priceChart.update();
-            }
-        });
-
-        socket.on('price_tick', (tick) => {
-            if (priceChart) {
-                priceChart.data.labels.push(tick.time);
-                priceChart.data.datasets[0].data.push(tick.price);
-                if (priceChart.data.labels.length > 20) {
-                    priceChart.data.labels.shift();
-                    priceChart.data.datasets[0].data.shift();
+                    updateUIBalances();
                 }
-                priceChart.update();
-            }
-        });
+            });
 
-        socket.on('fx_update', (rates) => {
-            document.getElementById('fxUSD').innerText = `$${rates.USD.toFixed(2)}`;
-            document.getElementById('fxEUR').innerText = `€${rates.EUR.toFixed(2)}`;
-            document.getElementById('fxGBP').innerText = `£${rates.GBP.toFixed(2)}`;
-            document.getElementById('fxZAR').innerText = `R${rates.ZAR.toFixed(2)}`;
-            document.getElementById('fxZWG').innerText = `${rates.ZWG.toFixed(2)} ZWG`;
-            document.getElementById('spotRateText').innerText = `Spot: $${rates.USD.toFixed(2)} USD / Tonne`;
+            socket.on('maintenanceNotice', (active) => {
+                document.getElementById('maintenanceBanner').style.display = active ? 'flex' : 'none';
+            });
 
-            if (currentFarmer) updateBalanceUI(currentFarmer.balanceTati);
-        });
-
-        socket.on('organic_insight', (data) => {
-            const banner = document.getElementById('organicBanner');
-            const text = document.getElementById('organicText');
-            const time = document.getElementById('organicTime');
-
-            text.innerHTML = `${data.message}`;
-            time.innerText = data.timestamp;
-            banner.style.display = 'flex';
-
-            setTimeout(() => { banner.style.display = 'none'; }, 6000);
-        });
-
-        socket.on('maintenance_status', (data) => {
-            const banner = document.getElementById('maintenanceBanner');
-            const text = document.getElementById('maintenanceText');
-            const statusInd = document.getElementById('marketStatusIndicator');
-            const payBtn = document.getElementById('payButton');
-
-            if (data.active) {
-                text.innerHTML = `🛠️ <strong>SYSTEM MAINTENANCE ACTIVE:</strong> ${data.reason}`;
-                banner.style.display = 'flex';
-                statusInd.innerText = "● Maintenance Mode (Trading Halted)";
-                statusInd.style.color = "var(--red-alert)";
-                if (payBtn) payBtn.disabled = true;
-            } else {
-                banner.style.display = 'none';
-                statusInd.innerText = "● Live Reserve Desk";
-                statusInd.style.color = "var(--green-glow)";
-                if (payBtn) payBtn.disabled = false;
-            }
-        });
-
-        function updateBalanceUI(balanceTati) {
-            document.getElementById('tatiBalance').innerText = `${balanceTati.toLocaleString(undefined, {minimumFractionDigits: 2})} TATI`;
-            const usdRate = parseFloat(document.getElementById('fxUSD').innerText.replace('$', '')) || 85;
-            const estUsd = (balanceTati * usdRate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('usdValuation').innerText = `$${estUsd} USD`;
-        }
-
-        function createLedgerRow(r) {
-            const isCredit = r.type === "GATEPASS_CREDIT";
-            return `
-                <tr>
-                    <td>${r.timestamp}</td>
-                    <td><strong>${r.gatepassId}</strong></td>
-                    <td><span style="color: ${isCredit ? 'var(--green-glow)' : 'var(--red-alert)'}">${isCredit ? 'GATEPASS CREDIT' : 'TRANSFER DEBIT'}</span></td>
-                    <td>${r.bundleWeightTons ? r.bundleWeightTons + ' Tonnes Cane' : r.farmerName}</td>
-                    <td class="${isCredit ? 'credit' : 'debit'}">${r.tatiMinted}</td>
-                    <td>${r.usdValuation}</td>
-                </tr>
-            `;
-        }
-
-        function renderLedger(ledger) {
-            const tbody = document.getElementById('ledgerBody');
-            if (!ledger || ledger.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No transaction history found.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = ledger.map(r => createLedgerRow(r)).join('');
-        }
-
-        async function executePayment() {
-            const recipient = document.getElementById('payRecipient').value.trim();
-            const amountTati = parseFloat(document.getElementById('payAmount').value);
-            const targetAsset = document.getElementById('payTargetAsset').value;
-            const statusDiv = document.getElementById('paymentStatus');
-
-            if (!recipient || isNaN(amountTati) || amountTati <= 0) {
-                statusDiv.innerText = "❌ Please enter valid recipient and amount.";
-                statusDiv.style.color = "var(--red-alert)";
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/client/execute-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        growerCode: currentFarmer.growerCode,
-                        recipient,
-                        amountTati,
-                        targetAsset
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    statusDiv.innerText = "✅ Settlement authorized and debited successfully!";
-                    statusDiv.style.color = "var(--green-glow)";
-                    document.getElementById('payAmount').value = '';
-                    document.getElementById('payRecipient').value = '';
+            socket.on('organicNotice', (msg) => {
+                const banner = document.getElementById('organicBanner');
+                if (msg) {
+                    document.getElementById('organicText').innerHTML = msg;
+                    document.getElementById('organicTime').innerText = new Date().toLocaleTimeString();
+                    banner.style.display = 'flex';
                 } else {
-                    statusDiv.innerText = `❌ ${data.error}`;
-                    statusDiv.style.color = "var(--red-alert)";
+                    banner.style.display = 'none';
                 }
-            } catch (err) {
-                statusDiv.innerText = "❌ Server error during settlement.";
-                statusDiv.style.color = "var(--red-alert)";
-            }
+            });
         }
     </script>
 </body>
